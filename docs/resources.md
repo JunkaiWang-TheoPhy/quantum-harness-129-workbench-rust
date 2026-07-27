@@ -45,6 +45,9 @@ The complete dated state and provenance are recorded in
 | PySCF AO-to-MO API | https://pyscf.org/pyscf_api_docs/pyscf.ao2mo.html | Reference transformation used before FCIDUMP export. |
 | tenferro guide | https://tensor4all.org/tenferro-rs/ | Architecture, first CPU example, tensor APIs, devices, and execution models. |
 | tenferro API index | https://tensor4all.org/tenferro-rs/api/ | Public crate boundaries for runtime, CPU, einsum, linalg, AD, FFT, and GPU. |
+| tenferro tensor 0.2 API | https://docs.rs/tenferro-tensor/0.2.0/tenferro_tensor/ | Owned tensors, strided views, backend contracts, and memory-layout rules checked during the Level 4 gap audit. |
+| tenferro indexing trait | https://docs.rs/tenferro-tensor/0.2.0/tenferro_tensor/backend/trait.TensorIndexing.html | Current gather/scatter/slice surface; the documented scatter configuration has no reduction combiner. |
+| tenferro memory order | https://tensor4all.org/tenferro-rs/guides/memory-order.html | Column-major ownership and strided-view interoperability with external row-major data. |
 | tenferro supported ops | https://tensor4all.org/tenferro-rs/design/supported-ops.html | Operational inventory to check before recording a missing-operation gap. |
 | tenferro specification | https://tensor4all.org/tenferro-rs/spec/ | Normative tensor, backend, AD, and operation contracts. |
 | libcint crate docs | https://docs.rs/libcint/latest/libcint/ | PySCF-style integral calls, row/column-major behavior, build features, and an RHF example. |
@@ -91,3 +94,10 @@ The complete dated state and provenance are recorded in
 - Repository/release versions in the dated snapshot are discovery aids, not
   dependency pins. Actual code must pin versions in `Cargo.lock` and the Python
   oracle environment.
+- The Level 4 implementation pins the Rust `libcint` crate at the Cargo
+  resolver-selected 0.3.2 release, builds its C dependency from source, and
+  links it statically into the final executable.
+- The final tenferro audit checked the published 0.2.0 tensor API. Gather,
+  scatter, views, and element-wise division exist; collision-reducing
+  scatter-add and an ergonomic in-place BLAS-1 surface remain the relevant
+  #129 gaps. See `reports/tenferro-gap-list.md`.

@@ -94,7 +94,7 @@ not automatic dependency pins.
 | [libcint](https://github.com/sunqm/libcint) | Gaussian integral engine | `v6.1.3` (2025-08-17) | Apache-2.0 |
 | [libcint crate](https://crates.io/crates/libcint) | Rust bindings and molecule/integral API | docs.rs showed `0.3.2` | See crate metadata |
 | [Psi4NumPy](https://github.com/psi4/psi4numpy) | Readable reference implementations | `v1.0` (2018-05-16) | BSD-3-Clause |
-| [tenferro-rs](https://github.com/tensor4all/tenferro-rs) | Rust tensors, einsum, linalg, AD, CPU/GPU | No GitHub release shown | Apache-2.0 |
+| [tenferro-rs](https://github.com/tensor4all/tenferro-rs) | Rust tensors, einsum, linalg, AD, CPU/GPU | published crates at `0.2.0`; pre-1.0 API | MIT OR Apache-2.0 |
 | [Quantum Package 2](https://github.com/QuantumPackage/qp2) | Determinant-driven comparison | `2.1.2` | AGPL-3.0 |
 | [faer](https://github.com/sarah-quinones/faer-rs) | Rust linear algebra fallback | `faer-v0.24.4` | MIT |
 | [argmin](https://github.com/argmin-rs/argmin) | Optional unitary-CC optimization | `argmin-v0.11.0` | Apache-2.0 |
@@ -113,6 +113,12 @@ not automatic dependency pins.
   https://docs.rs/libcint/latest/libcint/
 - tenferro user guide:
   https://tensor4all.org/tenferro-rs/
+- tenferro tensor 0.2.0 API:
+  https://docs.rs/tenferro-tensor/0.2.0/tenferro_tensor/
+- tenferro gather/scatter backend trait:
+  https://docs.rs/tenferro-tensor/0.2.0/tenferro_tensor/backend/trait.TensorIndexing.html
+- tenferro memory-order guide:
+  https://tensor4all.org/tenferro-rs/guides/memory-order.html
 - tenferro supported-operation inventory:
   https://tensor4all.org/tenferro-rs/design/supported-ops.html
 - tenferro normative specifications:
@@ -128,3 +134,15 @@ not automatic dependency pins.
   source at implementation time.
 - Third-party text is summarized here; this repository does not mirror whole
   websites or vendor copyrighted pages.
+
+## Level 4 Implementation Snapshot
+
+- The production dependency is `libcint` crate 0.3.2 with
+  `build_from_source` and `static`.
+- The checked path computes overlap, kinetic, nuclear-attraction, and AO ERIs
+  inside Rust, then runs Rust RHF/DIIS, AO-to-MO, and direct FCI/Davidson.
+- H2 and H2O/STO-3G complete without Python at runtime and match PySCF FCI
+  within `2e-10` hartree.
+- The tenferro 0.2.0 audit confirmed documented gather/scatter and strided
+  views, while identifying collision-reducing scatter-add and allocation-free
+  BLAS-1 updates as the remaining direct-FCI API gaps.

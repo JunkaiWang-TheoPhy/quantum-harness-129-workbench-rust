@@ -89,6 +89,35 @@ H4 CI(4) and H2 UCC(2) reproduce their FCI limits. H2 MP2 matches the
 independent PySCF MP2 oracle. See
 [reports/level3-methods.md](reports/level3-methods.md).
 
+## Level 4 Status
+
+The direct-integral stack is complete for H2 and H2O/STO-3G:
+
+- Rust calls `libcint` directly for overlap, kinetic, nuclear-attraction, and
+  electron-repulsion integrals;
+- Rust RHF implements symmetric orthogonalization, Coulomb/exchange Fock
+  construction, DIIS, and convergence reporting;
+- a staged AO-to-MO transformation feeds the shared matrix-free FCI solver;
+- committed PySCF fixtures verify every AO and MO integral, RHF energies,
+  orbital energies, and final FCI energies;
+- the checked production commands have no Python runtime dependency.
+
+```bash
+cargo run --release -- rhf h2o-sto3g
+cargo run --release -- direct-integrals-fci h2-sto3g
+cargo run --release -- direct-integrals-fci h2o-sto3g
+```
+
+H2O/STO-3G gives RHF `-74.962663067690499` and direct FCI
+`-75.012918738193051` hartree. The FCI error against PySCF is `1.485e-10`
+hartree. See [reports/level4-integrals.md](reports/level4-integrals.md).
+
+The required ecosystem findings are recorded in
+[reports/tenferro-gap-list.md](reports/tenferro-gap-list.md). tenferro-rs 0.2.0
+already supplies dense tensors, strided views, gather/scatter, division,
+reductions, and contractions; the primary determinant-workload gap is
+collision-reducing scatter-add with explicit deterministic semantics.
+
 ## Scope
 
 - Parse FCIDUMP files generated from PySCF.
@@ -96,6 +125,8 @@ independent PySCF MP2 oracle. See
 - Build tiny-system dense Hamiltonians for oracle checks.
 - Implement string-based direct FCI and Davidson iteration.
 - Implement determinant-based arbitrary-order CC(n).
+- Implement CI(n), MBPT(n), and unitary CC(n) from the same operator machinery.
+- Compute direct libcint AO integrals, RHF, and AO-to-MO transformations.
 - Record Rust ecosystem and `tenferro-rs` gap notes discovered along the way.
 
 ## Repository Map
@@ -125,6 +156,11 @@ independent PySCF MP2 oracle. See
   arbitrary-order CC convergence and oracle comparisons.
 - [reports/level3-methods.md](reports/level3-methods.md) records CI(n),
   MBPT(n), and unitary CC(n) results.
+- [reports/level4-integrals.md](reports/level4-integrals.md) records the
+  Python-free direct-integral pipeline and element-level PySCF comparisons.
+- [reports/tenferro-gap-list.md](reports/tenferro-gap-list.md) maps every
+  #129 tensor requirement to the current tenferro-rs 0.2.0 API and proposes
+  upstreamable reproducer work.
 
 ## Upstream Registration
 

@@ -59,3 +59,18 @@ Completed the Level 0 tiny-system oracle loop:
   `6.217e-15` hartree for H4.
 - Added checksum verification, CLI regression tests, and
   `reports/level0-accuracy.md`.
+
+Completed Levels 1-4:
+
+- Added matrix-free spin-free direct FCI and Davidson, including the
+  245,025-determinant frozen-core H2O/6-31G target.
+- Added arbitrary-rank determinant CC(n), CI(n), MBPT(n), and unitary CC(n).
+- Added the direct Rust `libcint -> RHF/DIIS -> AO-to-MO -> FCI` pipeline for
+  H2 and H2O/STO-3G.
+- Added complete AO/MO integral fixtures and element-by-element PySCF
+  comparisons.
+- Re-checked the current tenferro-rs 0.2.0 repository, tensor API, indexing
+  trait, and memory-order documentation.
+- Recorded the final indexed scatter-add, mutable/output-buffer, BLAS-1,
+  layout, numerical, performance, and API findings in
+  `reports/tenferro-gap-list.md`.

@@ -93,8 +93,8 @@
       "url": "https://github.com/tensor4all/tenferro-rs",
       "docs": "https://tensor4all.org/tenferro-rs/",
       "role": "Rust tensor/autodiff stack to evaluate and report gaps against",
-      "latest_visible_release": null,
-      "license": "Apache-2.0"
+      "latest_visible_crate_version": "0.2.0",
+      "license": "MIT OR Apache-2.0"
     },
     {
       "name": "faer",
@@ -118,6 +118,9 @@
       "https://pyscf.org/_modules/pyscf/tools/fcidump.html",
       "https://docs.rs/libcint/latest/libcint/",
       "https://tensor4all.org/tenferro-rs/",
+      "https://docs.rs/tenferro-tensor/0.2.0/tenferro_tensor/",
+      "https://docs.rs/tenferro-tensor/0.2.0/tenferro_tensor/backend/trait.TensorIndexing.html",
+      "https://tensor4all.org/tenferro-rs/guides/memory-order.html",
       "https://tensor4all.org/tenferro-rs/design/supported-ops.html",
       "https://tensor4all.org/tenferro-rs/spec/"
     ],

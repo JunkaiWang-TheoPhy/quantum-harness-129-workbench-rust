@@ -22,6 +22,8 @@
   "geometry_angstrom": "O 0 0 0; H 0.967 0 0; H -0.2923916843556798 0.9217353757557798 0",
   "hf_converged": true,
   "hf_energy": -74.96266306763113,
+  "mp2_correlation_energy": -0.03586725268765392,
+  "mp2_total_energy": -74.99853032031878,
   "nuclear_repulsion_energy": 9.094848418932882,
   "number_of_active_electrons": 10,
   "number_of_active_molecular_orbitals": 7,

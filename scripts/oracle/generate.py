@@ -173,6 +173,28 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         json.dumps(reference, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    ao_reference = {
+        "schema_version": 1,
+        "system": system.name,
+        "basis": system.basis,
+        "nao": int(mol.nao_nr()),
+        "nelec": int(mol.nelectron),
+        "nuclear_repulsion_energy": float(mol.energy_nuc()),
+        "overlap": [float(value) for value in mol.intor("int1e_ovlp").ravel()],
+        "hcore": [float(value) for value in mf.get_hcore().ravel()],
+        "eri_ao": [float(value) for value in mol.intor("int2e").ravel()],
+        "rhf_total_energy": hf_energy,
+        "fci_energy": float(fci_energy),
+        "orbital_energies": [float(value) for value in mf.mo_energy],
+        "mo_coefficients": [float(value) for value in mf.mo_coeff.ravel()],
+        "h1_mo": [float(value) for value in mo_h1.ravel()],
+        "eri_mo": [float(value) for value in mo_eri.ravel()],
+        "pyscf_version": pyscf.__version__,
+    }
+    (output_dir / "ao_reference.json").write_text(
+        json.dumps(ao_reference, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     return reference
 
 
