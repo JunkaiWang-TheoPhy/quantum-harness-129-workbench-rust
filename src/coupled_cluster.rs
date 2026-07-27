@@ -1,7 +1,9 @@
+use std::time::{Duration, Instant};
+
 use thiserror::Error;
 
 use crate::amplitudes::{Amplitudes, orbital_denominators};
-use crate::cluster::{ClusterError, ClusterOperator};
+use crate::cluster::{ClusterError, ClusterExpansionPlan};
 use crate::determinant::{DeterminantBasis, DeterminantError};
 use crate::diis::{Diis, DiisError};
 use crate::direct_fci::DirectFciOperator;
@@ -46,10 +48,21 @@ pub struct CcResult {
     pub converged: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct CcSeriesEntry {
+    pub rank: usize,
+    pub result: CcResult,
+    pub elapsed: Duration,
+}
+
 #[derive(Debug, Error)]
 pub enum CcError {
+    #[error("CC rank {requested} is outside 1..={maximum}")]
+    InvalidRank { requested: usize, maximum: usize },
     #[error("orbital energy length is {actual}, expected {expected}")]
     OrbitalEnergyLength { actual: usize, expected: usize },
+    #[error("warm-start length is {actual}, expected {expected}")]
+    WarmStartLength { actual: usize, expected: usize },
     #[error("orbital denominator {index} is zero or non-finite")]
     InvalidDenominator { index: usize },
     #[error(transparent)]
@@ -71,34 +84,111 @@ pub fn solve_cc(
     config: &CcConfig,
 ) -> Result<CcResult, CcError> {
     let problem = operator.problem();
+    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    validate_rank(rank, &basis)?;
+    let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
+    let space = ExcitationSpace::new(&basis, reference, rank)?;
+    solve_cc_in_space(operator, &basis, &space, orbital_energies, config, None)
+}
+
+pub fn solve_cc_series(
+    operator: &DirectFciOperator,
+    max_rank: usize,
+    orbital_energies: &[f64],
+    config: &CcConfig,
+) -> Result<Vec<CcSeriesEntry>, CcError> {
+    let problem = operator.problem();
+    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    validate_rank(max_rank, &basis)?;
     if orbital_energies.len() != problem.norb {
         return Err(CcError::OrbitalEnergyLength {
             actual: orbital_energies.len(),
             expected: problem.norb,
         });
     }
-    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+
     let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
-    let space = ExcitationSpace::new(&basis, reference, rank)?;
-    let denominators = orbital_denominators(&space, orbital_energies, problem.norb);
+    let mut warm_start = vec![0.0; basis.len()];
+    let mut series = Vec::with_capacity(max_rank);
+    for rank in 1..=max_rank {
+        let space = ExcitationSpace::new(&basis, reference, rank)?;
+        let started = Instant::now();
+        let result = solve_cc_in_space(
+            operator,
+            &basis,
+            &space,
+            orbital_energies,
+            config,
+            Some(&warm_start),
+        )?;
+        let elapsed = started.elapsed();
+        for (excitation, &amplitude) in space.excitations.iter().zip(&result.amplitudes.values) {
+            warm_start[excitation.determinant_index] = amplitude;
+        }
+        let converged = result.converged;
+        series.push(CcSeriesEntry {
+            rank,
+            result,
+            elapsed,
+        });
+        if !converged {
+            break;
+        }
+    }
+    Ok(series)
+}
+
+fn validate_rank(rank: usize, basis: &DeterminantBasis) -> Result<(), CcError> {
+    let maximum = basis.nalpha + basis.nbeta;
+    if rank == 0 || rank > maximum {
+        return Err(CcError::InvalidRank {
+            requested: rank,
+            maximum,
+        });
+    }
+    Ok(())
+}
+
+fn solve_cc_in_space(
+    operator: &DirectFciOperator,
+    basis: &DeterminantBasis,
+    space: &ExcitationSpace,
+    orbital_energies: &[f64],
+    config: &CcConfig,
+    warm_start: Option<&[f64]>,
+) -> Result<CcResult, CcError> {
+    let problem = operator.problem();
+    if orbital_energies.len() != problem.norb {
+        return Err(CcError::OrbitalEnergyLength {
+            actual: orbital_energies.len(),
+            expected: problem.norb,
+        });
+    }
+    let denominators = orbital_denominators(space, orbital_energies, problem.norb);
     for (index, &denominator) in denominators.iter().enumerate() {
         if !denominator.is_finite() || denominator.abs() < 1e-12 {
             return Err(CcError::InvalidDenominator { index });
         }
     }
-    let mut amplitudes = Amplitudes::zeros(&space);
+    let mut amplitudes = Amplitudes::zeros(space);
+    if let Some(warm_start) = warm_start {
+        if warm_start.len() != basis.len() {
+            return Err(CcError::WarmStartLength {
+                actual: warm_start.len(),
+                expected: basis.len(),
+            });
+        }
+        for (value, excitation) in amplitudes.values.iter_mut().zip(&space.excitations) {
+            *value = warm_start[excitation.determinant_index];
+        }
+    }
+    let expansion = ClusterExpansionPlan::new(basis, space)?;
     let mut history = Diis::new(config.diis_history);
     let mut iterations = Vec::new();
     let mut previous_energy = f64::INFINITY;
 
     for iteration in 1..=config.max_iterations {
-        let (energy, residual) = energy_and_residual(
-            operator,
-            &basis,
-            &space,
-            &amplitudes,
-            config.exponential_threshold,
-        )?;
+        let (energy, residual) = energy_and_residual(operator, space, &expansion, &amplitudes)?;
         let residual_norm = residual
             .iter()
             .map(|value| value * value)
@@ -135,13 +225,7 @@ pub fn solve_cc(
         previous_energy = energy;
     }
 
-    let (energy, residual) = energy_and_residual(
-        operator,
-        &basis,
-        &space,
-        &amplitudes,
-        config.exponential_threshold,
-    )?;
+    let (energy, residual) = energy_and_residual(operator, space, &expansion, &amplitudes)?;
     let residual_norm = residual
         .iter()
         .map(|value| value * value)
@@ -158,14 +242,12 @@ pub fn solve_cc(
 
 fn energy_and_residual(
     operator: &DirectFciOperator,
-    basis: &DeterminantBasis,
     space: &ExcitationSpace,
+    expansion: &ClusterExpansionPlan<'_>,
     amplitudes: &Amplitudes,
-    exponential_threshold: f64,
 ) -> Result<(f64, Vec<f64>), CcError> {
-    let cluster = ClusterOperator::new(basis, space, amplitudes)?;
-    let wavefunction = cluster.exponential_on_reference(exponential_threshold)?;
-    let mut h_wavefunction = vec![0.0; basis.len()];
+    let wavefunction = expansion.exponential_on_reference(amplitudes)?;
+    let mut h_wavefunction = vec![0.0; operator.dimension()];
     operator.apply(&wavefunction, &mut h_wavefunction)?;
     let energy = h_wavefunction[space.reference_index];
     let residual = space

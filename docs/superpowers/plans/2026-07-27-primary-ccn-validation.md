@@ -263,7 +263,7 @@ git commit -m "Accelerate cluster exponential by ranked convolution"
 - Produces: `CcSeriesEntry { rank: usize, result: CcResult, elapsed: Duration }`.
 - Preserves: `solve_cc` signature and behavior.
 
-- [ ] **Step 1: Add failing single-rank equivalence and warm-start tests**
+- [x] **Step 1: Add failing single-rank equivalence and warm-start tests**
 
 Require:
 
@@ -277,7 +277,7 @@ assert!(series[1].result.iterations.len() <= single.iterations.len());
 Also reject `max_rank == 0` and a maximum above
 `basis.nalpha + basis.nbeta`.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 Run:
 
@@ -287,13 +287,13 @@ cargo test --test level2 warm_started_cc_series -- --nocapture
 
 Expected: compile failure because `solve_cc_series` is absent.
 
-- [ ] **Step 3: Route CC energy evaluation through the recurrence**
+- [x] **Step 3: Route CC energy evaluation through the recurrence**
 
 Build one `ClusterExpansionPlan` before the iteration loop and pass it into
 `energy_and_residual`. Remove repeated construction of a Taylor cluster
 operator from the CC path; do not alter UCC.
 
-- [ ] **Step 4: Implement determinant-indexed warm starts**
+- [x] **Step 4: Implement determinant-indexed warm starts**
 
 Maintain:
 
@@ -306,7 +306,7 @@ For a new excitation space, initialize each amplitude from
 write every converged amplitude back by determinant index. Record elapsed
 wall-clock duration for each rank.
 
-- [ ] **Step 5: Run Level 2 and all unit tests**
+- [x] **Step 5: Run Level 2 and all unit tests**
 
 Run:
 
@@ -317,7 +317,7 @@ cargo test --test level2
 cargo test --lib
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/coupled_cluster.rs tests/level2.rs
