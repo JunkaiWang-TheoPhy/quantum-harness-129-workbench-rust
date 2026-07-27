@@ -424,7 +424,7 @@ Run:
 Record the six-second one-iteration pre-change baseline from the design and
 the full converged post-change runtime.
 
-- [ ] **Step 2: Run the complete primary series**
+- [x] **Step 2: Run the complete primary series**
 
 Run:
 
@@ -439,27 +439,27 @@ Run:
 Expected: all eight ranks converge and every difference rounds to the Table 2
 equilibrium value.
 
-- [ ] **Step 3: Commit machine-readable results**
+- [x] **Step 3: Commit machine-readable results**
 
 Store command, git commit, hardware description, units, total energies,
 method-minus-FCI differences, published differences, errors, iteration counts,
 residual norms, elapsed times, and peak memory in
 `cc_series_results.json`.
 
-- [ ] **Step 4: Turn the primary series into a regression**
+- [x] **Step 4: Turn the primary series into a regression**
 
 Load the committed result file in `tests/cc_series.rs`. Verify rank coverage,
 residuals, and published rounded matches without rerunning the full expensive
 series in the default test suite. Mark the live calculation as an ignored test
 with an exact reproduction command.
 
-- [ ] **Step 5: Update the Level 2 report**
+- [x] **Step 5: Update the Level 2 report**
 
 Replace the small-system-only completion claim with a primary acceptance
 table. Explain the method-minus-FCI sign convention, printed precision,
 convergence thresholds, warm-start behavior, runtime, and peak memory.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add fixtures/h2o-631g-fc/cc_series_results.json tests/cc_series.rs reports/level2-cc-accuracy.md docs/reproducibility-notes.md

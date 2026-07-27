@@ -90,14 +90,15 @@ Tests should cover these facts explicitly:
 
 - Keep amplitudes through excitation level `n`.
 - Apply `T` using the same determinant/string machinery.
-- Accumulate `exp(T)|HF>` by Taylor series and stop only after the next term's
-  norm is below the documented threshold; also exploit the exact finite
-  excitation ceiling.
+- Retain the Taylor-series implementation as an independent small-system
+  oracle. In production CC, compute `exp(T)|HF>` with the exact
+  excitation-rank subset recurrence and compare every H2/H4 coefficient
+  against Taylor expansion.
 - Evaluate the energy and projected residuals on determinants through level
   `n`.
 - Use orbital-energy denominators for Jacobi updates and DIIS acceleration.
-- First verify CC(2) against PySCF CCSD, then compare the full CC(n) series to
-  Hirata 2000 Table 2.
+- First verify CC(2) against PySCF CCSD, then compare CC(1)-CC(8) on the
+  primary H2O/6-31G frozen-core fixture to Hirata 2000 Table 2.
 - Use residual norm `< 1e-6` as the published baseline convergence criterion;
   tighter internal tests are encouraged.
 
