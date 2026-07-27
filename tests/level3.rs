@@ -8,7 +8,7 @@ use ed_workbench_rs::mbpt::solve_mbpt;
 use ed_workbench_rs::optimizer::BfgsConfig;
 use ed_workbench_rs::problem::ElectronicProblem;
 use ed_workbench_rs::reference::Reference;
-use ed_workbench_rs::truncated_ci::solve_ci;
+use ed_workbench_rs::truncated_ci::{TruncatedCiError, solve_ci, solve_ci_series};
 use ed_workbench_rs::unitary_cc::UnitaryCcModel;
 
 fn load(slug: &str) -> (DirectFciOperator, Reference) {
@@ -64,4 +64,44 @@ fn h2_full_rank_ucc_reaches_fci_variationally() {
     assert!(result.value <= hf_energy + 1e-10);
     assert!(result.value >= reference.fci_energy - 1e-10);
     assert!((result.value - reference.fci_energy).abs() < 1e-8);
+}
+
+#[test]
+fn warm_started_ci_series_is_variational_and_reaches_fci() {
+    let (operator, reference) = load("h4-sto3g");
+    let config = DavidsonConfig {
+        residual_tolerance: 1e-10,
+        energy_tolerance: 1e-12,
+        max_iterations: 100,
+        max_subspace: 36,
+    };
+    let series = solve_ci_series(&operator, 4, &config).unwrap();
+    assert_eq!(series.len(), 4);
+    for (index, entry) in series.iter().enumerate() {
+        assert_eq!(entry.rank, index + 1);
+        assert!(entry.result.converged);
+    }
+    for pair in series.windows(2) {
+        assert!(pair[1].result.energy <= pair[0].result.energy + 1e-10);
+    }
+    assert!((series[3].result.energy - reference.fci_energy).abs() < 1e-10);
+}
+
+#[test]
+fn ci_series_rejects_invalid_maximum_rank() {
+    let (operator, _) = load("h2-sto3g");
+    assert!(matches!(
+        solve_ci_series(&operator, 0, &DavidsonConfig::default()),
+        Err(TruncatedCiError::InvalidRank {
+            requested: 0,
+            maximum: 2
+        })
+    ));
+    assert!(matches!(
+        solve_ci_series(&operator, 3, &DavidsonConfig::default()),
+        Err(TruncatedCiError::InvalidRank {
+            requested: 3,
+            maximum: 2
+        })
+    ));
 }

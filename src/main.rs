@@ -20,7 +20,7 @@ use ed_workbench_rs::problem::ElectronicProblem;
 use ed_workbench_rs::published_reference::{HirataTable2, SeriesKind, rounded_published_match};
 use ed_workbench_rs::reference::{Reference, sha256_hex};
 use ed_workbench_rs::rhf::{RhfConfig, solve_rhf};
-use ed_workbench_rs::truncated_ci::solve_ci;
+use ed_workbench_rs::truncated_ci::{solve_ci, solve_ci_series};
 use ed_workbench_rs::unitary_cc::UnitaryCcModel;
 
 #[derive(Debug, Parser)]
@@ -82,6 +82,22 @@ enum Command {
         reference: PathBuf,
         #[arg(long)]
         order: usize,
+    },
+    Level3Series {
+        fcidump: PathBuf,
+        reference: PathBuf,
+        #[arg(long)]
+        published_reference: Option<PathBuf>,
+        #[arg(long, default_value_t = 8)]
+        max_ci_rank: usize,
+        #[arg(long, default_value_t = 20)]
+        max_mbpt_order: usize,
+        #[arg(long, default_value_t = 1e-7)]
+        ci_residual_tolerance: f64,
+        #[arg(long, default_value_t = 100)]
+        max_iterations: usize,
+        #[arg(long, default_value_t = 24)]
+        max_subspace: usize,
     },
     Ucc {
         fcidump: PathBuf,
@@ -377,6 +393,148 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     result.corrections[index],
                     result.partial_sums[index]
                 );
+            }
+        }
+        Command::Level3Series {
+            fcidump,
+            reference,
+            published_reference,
+            max_ci_rank,
+            max_mbpt_order,
+            ci_residual_tolerance,
+            max_iterations,
+            max_subspace,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let reference = Reference::load(&reference)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let published = published_reference
+                .as_deref()
+                .map(HirataTable2::load)
+                .transpose()?;
+            if let Some(table) = &published {
+                validate_hirata_context(table, &reference, &operator)?;
+            }
+
+            let ci_series = solve_ci_series(
+                &operator,
+                max_ci_rank,
+                &DavidsonConfig {
+                    residual_tolerance: ci_residual_tolerance,
+                    energy_tolerance: ci_residual_tolerance * 0.01,
+                    max_iterations,
+                    max_subspace,
+                },
+            )?;
+            let mbpt_started = Instant::now();
+            let mbpt = solve_mbpt(
+                &operator,
+                &reference.active_orbital_energies,
+                max_mbpt_order,
+            )?;
+            let mbpt_elapsed = mbpt_started.elapsed();
+
+            println!("system: {}", reference.system);
+            println!("energy unit: hartree");
+            println!("CI series");
+            println!(
+                "method\torder\tdimension\tenergy_hartree\tmethod_minus_fci_hartree\titerations\tresidual\telapsed_seconds\tconverged\tpublished_difference\tpublished_error\tpublished_match"
+            );
+            let mut published_matches = true;
+            for entry in &ci_series {
+                let difference = entry.result.energy - reference.fci_energy;
+                if let Some(table) = &published {
+                    let expected = table
+                        .difference(SeriesKind::Ci, entry.rank)
+                        .ok_or_else(|| format!("Hirata Table 2 has no CI({}) value", entry.rank))?;
+                    let error = difference - expected;
+                    let matches =
+                        rounded_published_match(difference, expected, table.printed_decimals);
+                    published_matches &= matches;
+                    println!(
+                        "CI\t{}\t{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t{:.6}\t{:.3e}\t{}",
+                        entry.rank,
+                        entry.dimension,
+                        entry.result.energy,
+                        difference,
+                        entry.result.iterations,
+                        entry.result.residual_norm,
+                        entry.elapsed.as_secs_f64(),
+                        entry.result.converged,
+                        expected,
+                        error,
+                        matches
+                    );
+                } else {
+                    println!(
+                        "CI\t{}\t{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t-\t-\t-",
+                        entry.rank,
+                        entry.dimension,
+                        entry.result.energy,
+                        difference,
+                        entry.result.iterations,
+                        entry.result.residual_norm,
+                        entry.elapsed.as_secs_f64(),
+                        entry.result.converged
+                    );
+                }
+            }
+            let ci_converged = ci_series.len() == max_ci_rank
+                && ci_series.iter().all(|entry| entry.result.converged);
+            println!("CI series converged: {ci_converged}");
+
+            println!("MBPT series");
+            println!(
+                "method\torder\tenergy_hartree\tmethod_minus_fci_hartree\tcorrection_hartree\tpublished_difference\tpublished_error\tpublished_match"
+            );
+            for order in 1..=max_mbpt_order {
+                let energy = mbpt.partial_sums[order - 1];
+                let difference = energy - reference.fci_energy;
+                if let Some(table) = &published {
+                    let expected = table
+                        .difference(SeriesKind::Mbpt, order)
+                        .ok_or_else(|| format!("Hirata Table 2 has no MBPT({order}) value"))?;
+                    let error = difference - expected;
+                    let matches =
+                        rounded_published_match(difference, expected, table.printed_decimals);
+                    published_matches &= matches;
+                    println!(
+                        "MBPT\t{}\t{:.15}\t{:.15}\t{:.15e}\t{:.6}\t{:.3e}\t{}",
+                        order,
+                        energy,
+                        difference,
+                        mbpt.corrections[order - 1],
+                        expected,
+                        error,
+                        matches
+                    );
+                } else {
+                    println!(
+                        "MBPT\t{}\t{:.15}\t{:.15}\t{:.15e}\t-\t-\t-",
+                        order,
+                        energy,
+                        difference,
+                        mbpt.corrections[order - 1]
+                    );
+                }
+            }
+            println!("MBPT elapsed seconds: {:.6}", mbpt_elapsed.as_secs_f64());
+            if published.is_some() {
+                println!(
+                    "published verification: {}",
+                    if published_matches && ci_converged {
+                        "PASS"
+                    } else {
+                        "FAIL"
+                    }
+                );
+            }
+            if !ci_converged {
+                return Err(format!("CI series stopped before converged CI({max_ci_rank})").into());
+            }
+            if !published_matches {
+                return Err("CI/MBPT series do not match Hirata 2000 Table 2".into());
             }
         }
         Command::Ucc {

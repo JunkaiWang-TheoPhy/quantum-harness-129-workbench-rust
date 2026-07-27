@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use thiserror::Error;
 
 use crate::davidson::{DavidsonConfig, DavidsonError, DavidsonResult, lowest_eigenpair};
@@ -80,10 +82,20 @@ impl LinearOperator for ProjectedOperator<'_> {
 
 #[derive(Debug, Error)]
 pub enum TruncatedCiError {
+    #[error("CI rank {requested} is outside 1..={maximum}")]
+    InvalidRank { requested: usize, maximum: usize },
     #[error(transparent)]
     Determinant(#[from] DeterminantError),
     #[error(transparent)]
     Davidson(#[from] DavidsonError),
+}
+
+#[derive(Debug, Clone)]
+pub struct CiSeriesEntry {
+    pub rank: usize,
+    pub dimension: usize,
+    pub result: DavidsonResult,
+    pub elapsed: Duration,
 }
 
 pub fn solve_ci(
@@ -91,6 +103,7 @@ pub fn solve_ci(
     rank: usize,
     config: &DavidsonConfig,
 ) -> Result<DavidsonResult, TruncatedCiError> {
+    validate_rank(full, rank)?;
     let projected = ProjectedOperator::through_rank(full, rank)?;
     let mut initial = vec![0.0; projected.dimension()];
     let index = projected
@@ -102,4 +115,59 @@ pub fn solve_ci(
         .0;
     initial[index] = 1.0;
     Ok(lowest_eigenpair(&projected, &initial, config)?)
+}
+
+pub fn solve_ci_series(
+    full: &DirectFciOperator,
+    max_rank: usize,
+    config: &DavidsonConfig,
+) -> Result<Vec<CiSeriesEntry>, TruncatedCiError> {
+    validate_rank(full, max_rank)?;
+    let problem = full.problem();
+    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
+    let reference_index = basis
+        .address(reference)
+        .expect("Hartree-Fock reference is in the determinant basis");
+    let mut previous_full = vec![0.0; basis.len()];
+    previous_full[reference_index] = 1.0;
+    let mut series = Vec::with_capacity(max_rank);
+
+    for rank in 1..=max_rank {
+        let projected = ProjectedOperator::through_rank(full, rank)?;
+        let initial: Vec<f64> = projected
+            .selected_indices()
+            .iter()
+            .map(|&index| previous_full[index])
+            .collect();
+        let started = Instant::now();
+        let result = lowest_eigenpair(&projected, &initial, config)?;
+        let elapsed = started.elapsed();
+        previous_full.fill(0.0);
+        for (&index, &coefficient) in projected.selected_indices().iter().zip(&result.eigenvector) {
+            previous_full[index] = coefficient;
+        }
+        let converged = result.converged;
+        series.push(CiSeriesEntry {
+            rank,
+            dimension: projected.dimension(),
+            result,
+            elapsed,
+        });
+        if !converged {
+            break;
+        }
+    }
+    Ok(series)
+}
+
+fn validate_rank(full: &DirectFciOperator, rank: usize) -> Result<(), TruncatedCiError> {
+    let maximum = full.problem().nelec;
+    if rank == 0 || rank > maximum {
+        return Err(TruncatedCiError::InvalidRank {
+            requested: rank,
+            maximum,
+        });
+    }
+    Ok(())
 }
