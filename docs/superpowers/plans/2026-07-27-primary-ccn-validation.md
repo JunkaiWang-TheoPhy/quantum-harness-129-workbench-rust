@@ -534,14 +534,14 @@ git commit -m "Validate water CI and MBPT series against Hirata"
 - Produces: one-command local reproduction paths.
 - Produces: final challenge solution README and required reproduction prompt.
 
-- [ ] **Step 1: Write the reproduction prompt**
+- [x] **Step 1: Write the reproduction prompt**
 
 The prompt must state the repository, commit, toolchain, fixture checksums,
 units, geometry, frozen core, commands, tolerances, expected FCI/CC/CI/MBPT
 tables, and how failures are reported. It must not depend on private chat
 history.
 
-- [ ] **Step 2: Update local documentation**
+- [x] **Step 2: Update local documentation**
 
 Explain architecture decisions, exact primary acceptance results, performance,
 limitations, the direct-libcint stretch path, and tenferro gap-list link.

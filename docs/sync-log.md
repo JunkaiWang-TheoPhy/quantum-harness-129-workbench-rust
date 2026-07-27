@@ -26,6 +26,11 @@ Created public Quantum Harness registration:
 - Solution directory identifier: WangTheoPhys
 - Catalog issue: https://github.com/QuantumBFS/quantum.harness/issues/129
 
+The original registration PR #210 was later closed and superseded by the
+active solution PR
+[#217](https://github.com/QuantumBFS/quantum.harness/pull/217), using the same
+head branch and solution directory.
+
 Synced useful upstream context into this repository:
 
 - Challenge metadata and deliverables in `docs/challenge-129-brief.md`.
@@ -86,3 +91,19 @@ Made geometry and numerical units explicit:
   coordinate and Hartree energy units in the CLI.
 - Added Python and Rust geometry regressions so coordinate positions cannot be
   confused with bond lengths.
+
+Completed the primary published-table acceptance:
+
+- Transcribed the equilibrium CI, MBPT, and CC columns of Hirata 2000 Table 2
+  with DOI, page, settings, printed precision, and a strict loader.
+- Replaced the production CC exponential with an exact ranked
+  subset-convolution recurrence while retaining Taylor expansion as an
+  independent small-system oracle.
+- Added warm-started `cc-series` and `level3-series` commands with
+  precision-aware published verification.
+- Ran CC(1)-CC(8), CI(1)-CI(8), and MBPT(1)-MBPT(20) on the
+  245,025-determinant H2O/6-31G frozen-core target; all 36 paper entries pass
+  at the six decimal places actually printed.
+- Committed exact machine-readable values, performance and environment
+  records, regression tests, accuracy reports, and the standalone
+  `docs/reproduction-prompt.md`.

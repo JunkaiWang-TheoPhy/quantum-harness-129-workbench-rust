@@ -23,3 +23,22 @@ The equilibrium fixture uses an H-H distance of 0.7414 Å. The original
 `h2-sto3g` regression fixture is retained separately at 1.4 Å. Re-running a
 fixture should preserve its numerical fields and FCIDUMP SHA-256 checksum when
 the pinned PySCF version and platform math stack are unchanged.
+
+All atom strings in `generate.py` are interpreted as Angstrom because every
+system carries `coordinate_unit="angstrom"` and the generator passes that
+value explicitly to PySCF. PySCF/libcint converts coordinates internally to
+Bohr. Total energies, orbital energies, nuclear repulsion, and FCIDUMP
+integrals are in Hartree; overlap, orbital coefficients, CI coefficients, and
+CC amplitudes are dimensionless.
+
+The primary challenge fixture can be regenerated in isolation with:
+
+```bash
+.venv/bin/python scripts/oracle/generate.py h2o-631g-fc
+```
+
+It uses H2O/6-31G, `R(O-H)=0.967 Å`, `angle(H-O-H)=107.6°`, and freezes the
+oxygen 1s orbital after RHF. Regeneration is an oracle audit, not a prerequisite
+for the Rust calculations. Before replacing any committed primary fixture,
+require the generated FCIDUMP checksum and every numerical reference field to
+match or document and review the platform-dependent difference.

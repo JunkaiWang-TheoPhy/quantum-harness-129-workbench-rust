@@ -66,17 +66,24 @@ Level 2 arbitrary-order determinant CC(n) is complete:
 
 - runtime-configurable excitation rank;
 - generic normalized cluster substitutions on full-FCI vectors;
-- finite Taylor construction of `exp(T)|HF>`;
+- exact ranked subset-convolution construction of `exp(T)|HF>`, checked
+  coefficient-by-coefficient against the independent finite Taylor path;
 - projected energy and residual equations;
-- orbital-denominator updates and DIIS;
+- orbital-denominator updates, DIIS, and determinant-indexed rank warm starts;
 - CC(2) validation against PySCF CCSD;
-- full-rank CC validation against FCI.
+- full CC(1)-CC(8) validation against Hirata 2000 Table 2.
 
 ```bash
-cargo run --release -- cc \
-  fixtures/h2o-sto3g/FCIDUMP fixtures/h2o-sto3g/reference.json \
-  --rank 2 --residual-tolerance 1e-7
+RAYON_NUM_THREADS=10 cargo run --release -- cc-series \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  fixtures/h2o-631g-fc/reference.json \
+  --published-reference fixtures/h2o-631g-fc/hirata2000-table2.json \
+  --max-rank 8 --residual-tolerance 1e-6 --max-iterations 100
 ```
+
+All eight published differences pass at the paper's six-decimal precision.
+CC(2) is within `3.025e-10` hartree of PySCF CCSD; CC(8) is within
+`7.998e-9` hartree of FCI.
 
 See [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md).
 
@@ -88,9 +95,21 @@ All three Level 3 method families are implemented:
 - arbitrary-order MBPT recursion with order-by-order corrections;
 - variational unitary CC(n) using `exp(T-T†)` and BFGS optimization.
 
-H4 CI(4) and H2 UCC(2) reproduce their FCI limits. H2 MP2 matches the
-independent PySCF MP2 oracle. See
+On the primary 245,025-determinant water target, every CI(1)-CI(8) and
+MBPT(1)-MBPT(20) difference matches Hirata 2000 Table 2 at its printed
+precision. CI(8) differs from FCI by `2.004e-12` hartree. H4 CI(4) and H2
+UCC(2) additionally reproduce their small-system FCI limits. See
 [reports/level3-methods.md](reports/level3-methods.md).
+
+```bash
+RAYON_NUM_THREADS=10 cargo run --release -- level3-series \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  fixtures/h2o-631g-fc/reference.json \
+  --published-reference fixtures/h2o-631g-fc/hirata2000-table2.json \
+  --max-ci-rank 8 --max-mbpt-order 20 \
+  --ci-residual-tolerance 1e-7 \
+  --max-iterations 100 --max-subspace 24
+```
 
 ## Level 4 Status
 
@@ -162,6 +181,9 @@ collision-reducing scatter-add with explicit deterministic semantics.
 - [docs/reproducibility-notes.md](docs/reproducibility-notes.md) extracts the
   implementation-sensitive conventions, APIs, targets, tolerances, and
   provenance rules needed to reproduce the published calculations.
+- [docs/reproduction-prompt.md](docs/reproduction-prompt.md) is the standalone
+  submission prompt with exact revision, checksums, commands, tolerances,
+  expected tables, and failure-reporting requirements.
 - [docs/sync-log.md](docs/sync-log.md) records what was pulled from GitHub and
   how this private repo relates to the public Quantum Harness registration PR.
 - [docs/upstream-metadata.json](docs/upstream-metadata.json) is the
@@ -183,7 +205,8 @@ collision-reducing scatter-add with explicit deterministic semantics.
 ## Upstream Registration
 
 - Challenge issue: https://github.com/QuantumBFS/quantum.harness/issues/129
-- Registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
+- Active solution PR: https://github.com/QuantumBFS/quantum.harness/pull/217
+- Superseded registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
 - Track folder: `tracks/ed/solutions/WangTheoPhys/`
 - Registered team: Rewrite It In Rust! (RIIR 2607 Hefei)
 - Members: Chenxi Wan, Yedi Shen, Junkai Wang
