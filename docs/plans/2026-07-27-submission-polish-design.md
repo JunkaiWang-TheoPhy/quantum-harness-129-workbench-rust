@@ -21,7 +21,7 @@ This pass includes:
   checksum validation;
 - adding an explicit manual workflow for the long primary CC and CI/MBPT
   acceptance calculations rather than running them on every commit;
-- adding Cargo package metadata, a pinned minimum Rust version, crate-level
+- adding Cargo package metadata, a tested minimum Rust version, crate-level
   documentation, and README status badges;
 - providing one checked script that runs the submission's normal local gates;
 - tagging the audited revision and publishing a GitHub `v0.1.0` release with

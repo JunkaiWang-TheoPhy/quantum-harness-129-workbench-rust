@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Install Rust 1.85.0
-        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Install Rust 1.89.0
+        run: rustup toolchain install 1.89.0 --profile minimal
       - name: Check minimum Rust version
-        run: cargo +1.85.0 check --locked
+        run: cargo +1.89.0 check --locked

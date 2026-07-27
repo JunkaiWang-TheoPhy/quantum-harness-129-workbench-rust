@@ -1,5 +1,9 @@
 # ED Workbench RS
 
+[![CI](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.1.0)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+
 Public AGPL-3.0 workbench for Quantum Harness challenge
 [#129](https://github.com/QuantumBFS/quantum.harness/issues/129):
 **Exact diagonalization workbench in Rust for electronic structure method

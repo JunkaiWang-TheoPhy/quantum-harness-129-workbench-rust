@@ -1,3 +1,27 @@
+//! Transparent determinant-based electronic-structure reference workbench.
+//!
+//! This crate implements the Rust calculation stack developed for Quantum
+//! Harness challenge #129. It favors small, auditable algorithms and
+//! independently checked paths over production-code specialization:
+//!
+//! - [`fcidump`], [`determinant`], [`strings`], [`direct_fci`], and
+//!   [`davidson`] form the direct full-configuration-interaction path;
+//! - [`cluster`] and [`coupled_cluster`] implement arbitrary-order
+//!   determinant coupled cluster;
+//! - [`truncated_ci`], [`mbpt`], and [`unitary_cc`] reuse the same operator
+//!   machinery for the Level 3 methods;
+//! - [`libcint_frontend`], [`rhf`], and [`ao2mo`] provide the direct-integral
+//!   route that removes Python from production calculations.
+//!
+//! Public molecule inputs use Angstrom coordinates. The libcint interface
+//! converts coordinates internally to Bohr. Total energies, orbital energies,
+//! nuclear repulsion, and energy-valued integrals are in Hartree; overlaps,
+//! orbital coefficients, CI coefficients, and CC amplitudes are
+//! dimensionless.
+//!
+//! Committed PySCF data is an independent oracle and fixture source. The Rust
+//! production commands do not import Python.
+
 pub mod active_space;
 pub mod amplitudes;
 pub mod ao2mo;

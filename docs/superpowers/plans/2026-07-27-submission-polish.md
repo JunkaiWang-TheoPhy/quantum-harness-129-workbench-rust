@@ -192,10 +192,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Install Rust 1.85.0
-        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Install Rust 1.89.0
+        run: rustup toolchain install 1.89.0 --profile minimal
       - name: Check minimum Rust version
-        run: cargo +1.85.0 check --locked
+        run: cargo +1.89.0 check --locked
 ```
 
 - [x] **Step 3: Add the manual primary workflow**
@@ -287,9 +287,10 @@ git commit -m "Add automated and live numerical CI"
 
 **Interfaces:**
 - Consumes: existing public modules and AGPL-3.0 license.
-- Produces: complete Cargo package metadata, an explicit Rust 1.85 minimum, crate-level architecture/unit documentation, and CI/release badges.
+- Produces: complete Cargo package metadata, an explicit Rust 1.89 minimum,
+  crate-level architecture/unit documentation, and CI/release badges.
 
-- [ ] **Step 1: Record the current metadata warning and absent crate docs**
+- [x] **Step 1: Record the current metadata warning and absent crate docs**
 
 Run:
 
@@ -301,7 +302,7 @@ test "$(rg -c '^//!' src/lib.rs || true)" = "0"
 
 Expected: both commands exit zero.
 
-- [ ] **Step 2: Add package metadata**
+- [x] **Step 2: Add package metadata**
 
 Add under `[package]`:
 
@@ -311,12 +312,12 @@ license = "AGPL-3.0-only"
 repository = "https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust"
 homepage = "https://github.com/QuantumBFS/quantum.harness/issues/129"
 readme = "README.md"
-rust-version = "1.85"
+rust-version = "1.89"
 keywords = ["quantum-chemistry", "fci", "coupled-cluster", "rust", "electronic-structure"]
 categories = ["science", "algorithms"]
 ```
 
-- [ ] **Step 3: Add crate-level documentation**
+- [x] **Step 3: Add crate-level documentation**
 
 Prepend `src/lib.rs` with crate docs that state:
 
@@ -331,7 +332,7 @@ Prepend `src/lib.rs` with crate docs that state:
   dimensionless;
 - committed PySCF data is oracle-only.
 
-- [ ] **Step 4: Add README badges**
+- [x] **Step 4: Add README badges**
 
 Place these directly below the title:
 
@@ -341,7 +342,7 @@ Place these directly below the title:
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 ```
 
-- [ ] **Step 5: Validate metadata, MSRV, and docs**
+- [x] **Step 5: Validate metadata, MSRV, and docs**
 
 Run:
 
@@ -350,15 +351,15 @@ if cargo package --allow-dirty --no-verify --list 2>&1 | \
     grep -q 'manifest has no description'; then
   exit 1
 fi
-rustup toolchain install 1.85.0 --profile minimal
-cargo +1.85.0 check --locked
+rustup toolchain install 1.89.0 --profile minimal
+cargo +1.89.0 check --locked
 RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --locked
 cargo test --locked
 ```
 
 Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Cargo.toml src/lib.rs README.md
