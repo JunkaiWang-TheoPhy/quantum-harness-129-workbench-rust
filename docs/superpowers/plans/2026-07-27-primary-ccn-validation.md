@@ -37,7 +37,7 @@
 - Produces: `HirataTable2::difference(series: SeriesKind, order: usize) -> Option<f64>`.
 - Produces: `rounded_published_match(computed: f64, published: f64, decimals: u32) -> bool`.
 
-- [ ] **Step 1: Write the failing published-reference tests**
+- [x] **Step 1: Write the failing published-reference tests**
 
 Test exact metadata, all required rank ranges, representative values, and
 six-decimal rounded comparison:
@@ -61,7 +61,7 @@ fn comparison_respects_the_papers_printed_precision() {
 }
 ```
 
-- [ ] **Step 2: Run the tests and verify failure**
+- [x] **Step 2: Run the tests and verify failure**
 
 Run:
 
@@ -71,7 +71,7 @@ cargo test --test published_reference
 
 Expected: compile failure because `published_reference` does not exist.
 
-- [ ] **Step 3: Add the machine-readable Table 2 transcription**
+- [x] **Step 3: Add the machine-readable Table 2 transcription**
 
 Record the equilibrium method-minus-FCI differences:
 
@@ -103,7 +103,7 @@ Record the equilibrium method-minus-FCI differences:
 }
 ```
 
-- [ ] **Step 4: Implement strict loading and rounded comparison**
+- [x] **Step 4: Implement strict loading and rounded comparison**
 
 Use Serde structs, reject missing orders through array-length checks in
 `validate`, and compare by rounding both values to integer microhartree:
@@ -115,7 +115,7 @@ pub fn rounded_published_match(computed: f64, published: f64, decimals: u32) -> 
 }
 ```
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run:
 

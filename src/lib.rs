@@ -17,6 +17,7 @@ pub mod molecule;
 pub mod operator;
 pub mod optimizer;
 pub mod problem;
+pub mod published_reference;
 pub mod reference;
 pub mod rhf;
 pub mod strings;
