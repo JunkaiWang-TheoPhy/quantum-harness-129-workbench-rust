@@ -443,7 +443,7 @@ git commit -m "Add review and release documentation"
 - Consumes: all local polish commits and public GitHub repository.
 - Produces: green remote normal CI on the exact final pre-release commit.
 
-- [ ] **Step 1: Run all local gates**
+- [x] **Step 1: Run all local gates**
 
 ```bash
 scripts/verify-submission.sh
@@ -454,7 +454,7 @@ git status --short
 
 Expected: all pass and only the plan checkbox update remains.
 
-- [ ] **Step 2: Mark Tasks 1-4 complete and commit the plan record**
+- [x] **Step 2: Mark Tasks 1-4 complete and commit the plan record**
 
 Update completed checkboxes, then:
 
