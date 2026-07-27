@@ -418,6 +418,7 @@ dependencies = [
  "clap",
  "libcint",
  "nalgebra",
+ "rayon",
  "serde",
  "serde_json",
  "sha2",

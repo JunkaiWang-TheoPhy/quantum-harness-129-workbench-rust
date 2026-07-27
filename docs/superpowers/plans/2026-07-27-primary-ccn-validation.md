@@ -410,7 +410,7 @@ git commit -m "Add published CC series verification command"
 - Produces: committed result rows with energies, differences, iterations,
   residuals, timings, and peak-memory measurement.
 
-- [ ] **Step 1: Benchmark CC(2) before and after**
+- [x] **Step 1: Benchmark CC(2) before and after**
 
 Run:
 

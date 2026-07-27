@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use rayon::prelude::*;
 use thiserror::Error;
 
 use crate::amplitudes::Amplitudes;
@@ -90,38 +91,78 @@ impl<'a> ClusterExpansionPlan<'a> {
         let beta_count = self.basis.beta_strings.len();
 
         for target_rank in 1..self.targets_by_rank.len() {
-            for &target in &self.targets_by_rank[target_rank] {
-                let alpha_target = target / beta_count;
-                let beta_target = target % beta_count;
-                let mut coefficient = 0.0;
-                for alpha in &self.alpha_partitions[alpha_target] {
-                    for beta in &self.beta_partitions[beta_target] {
-                        let amplitude_rank = alpha.rank + beta.rank;
-                        if amplitude_rank == 0 || amplitude_rank > self.space.max_rank {
-                            continue;
-                        }
-                        let amplitude_determinant =
-                            alpha.amplitude_string * beta_count + beta.amplitude_string;
-                        let amplitude_index = self.amplitude_by_determinant[amplitude_determinant]
-                            .ok_or(ClusterError::MissingAmplitude {
-                                determinant: amplitude_determinant,
-                            })?;
-                        let amplitude = amplitudes.values[amplitude_index];
-                        if amplitude == 0.0 {
-                            continue;
-                        }
-                        let source = alpha.source_string * beta_count + beta.source_string;
-                        let phase = alpha.phase * beta.phase;
-                        coefficient += amplitude_rank as f64
-                            * amplitude
-                            * wavefunction[source]
-                            * f64::from(phase);
-                    }
-                }
-                wavefunction[target] = coefficient / target_rank as f64;
+            let targets = &self.targets_by_rank[target_rank];
+            let coefficients: Result<Vec<_>, ClusterError> = if targets.len() >= 1_024 {
+                targets
+                    .par_iter()
+                    .map(|&target| {
+                        self.target_coefficient(
+                            &wavefunction,
+                            amplitudes,
+                            target,
+                            target_rank,
+                            beta_count,
+                        )
+                        .map(|coefficient| (target, coefficient))
+                    })
+                    .collect()
+            } else {
+                targets
+                    .iter()
+                    .map(|&target| {
+                        self.target_coefficient(
+                            &wavefunction,
+                            amplitudes,
+                            target,
+                            target_rank,
+                            beta_count,
+                        )
+                        .map(|coefficient| (target, coefficient))
+                    })
+                    .collect()
+            };
+            for (target, coefficient) in coefficients? {
+                wavefunction[target] = coefficient;
             }
         }
         Ok(wavefunction)
+    }
+
+    fn target_coefficient(
+        &self,
+        wavefunction: &[f64],
+        amplitudes: &Amplitudes,
+        target: usize,
+        target_rank: usize,
+        beta_count: usize,
+    ) -> Result<f64, ClusterError> {
+        let alpha_target = target / beta_count;
+        let beta_target = target % beta_count;
+        let mut coefficient = 0.0;
+        for alpha in &self.alpha_partitions[alpha_target] {
+            for beta in &self.beta_partitions[beta_target] {
+                let amplitude_rank = alpha.rank + beta.rank;
+                if amplitude_rank == 0 || amplitude_rank > self.space.max_rank {
+                    continue;
+                }
+                let amplitude_determinant =
+                    alpha.amplitude_string * beta_count + beta.amplitude_string;
+                let amplitude_index = self.amplitude_by_determinant[amplitude_determinant].ok_or(
+                    ClusterError::MissingAmplitude {
+                        determinant: amplitude_determinant,
+                    },
+                )?;
+                let amplitude = amplitudes.values[amplitude_index];
+                if amplitude == 0.0 {
+                    continue;
+                }
+                let source = alpha.source_string * beta_count + beta.source_string;
+                let phase = alpha.phase * beta.phase;
+                coefficient +=
+                    amplitude_rank as f64 * amplitude * wavefunction[source] * f64::from(phase);
+            }
+        }
+        Ok(coefficient / target_rank as f64)
     }
 }
 
