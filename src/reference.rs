@@ -13,6 +13,8 @@ pub struct Reference {
     #[serde(default)]
     pub ccsd_total_energy: Option<f64>,
     #[serde(default)]
+    pub mp2_total_energy: Option<f64>,
+    #[serde(default)]
     pub active_orbital_energies: Vec<f64>,
 }
 

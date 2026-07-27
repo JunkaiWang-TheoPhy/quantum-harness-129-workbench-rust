@@ -9,9 +9,13 @@ use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
 use ed_workbench_rs::direct_fci::DirectFciOperator;
 use ed_workbench_rs::fcidump::Fcidump;
+use ed_workbench_rs::mbpt::solve_mbpt;
 use ed_workbench_rs::operator::LinearOperator;
+use ed_workbench_rs::optimizer::BfgsConfig;
 use ed_workbench_rs::problem::ElectronicProblem;
 use ed_workbench_rs::reference::{Reference, sha256_hex};
+use ed_workbench_rs::truncated_ci::solve_ci;
+use ed_workbench_rs::unitary_cc::UnitaryCcModel;
 
 #[derive(Debug, Parser)]
 #[command(name = "ed-workbench-rs")]
@@ -45,6 +49,28 @@ enum Command {
         rank: usize,
         #[arg(long, default_value_t = 1e-8)]
         residual_tolerance: f64,
+        #[arg(long, default_value_t = 100)]
+        max_iterations: usize,
+    },
+    Ci {
+        fcidump: PathBuf,
+        #[arg(long)]
+        rank: usize,
+        #[arg(long, default_value_t = 1e-9)]
+        residual_tolerance: f64,
+    },
+    Mbpt {
+        fcidump: PathBuf,
+        reference: PathBuf,
+        #[arg(long)]
+        order: usize,
+    },
+    Ucc {
+        fcidump: PathBuf,
+        #[arg(long)]
+        rank: usize,
+        #[arg(long, default_value_t = 1e-7)]
+        gradient_tolerance: f64,
         #[arg(long, default_value_t = 100)]
         max_iterations: usize,
     },
@@ -157,6 +183,76 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err(format!("CC({rank}) did not converge").into());
+            }
+        }
+        Command::Ci {
+            fcidump,
+            rank,
+            residual_tolerance,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let result = solve_ci(
+                &operator,
+                rank,
+                &DavidsonConfig {
+                    residual_tolerance,
+                    energy_tolerance: residual_tolerance * 0.01,
+                    max_iterations: 100,
+                    max_subspace: 24,
+                },
+            )?;
+            println!("CI({rank}) energy: {:.15}", result.energy);
+            println!("residual norm: {:.3e}", result.residual_norm);
+            println!("iterations: {}", result.iterations);
+            println!("converged: {}", result.converged);
+            if !result.converged {
+                return Err(format!("CI({rank}) did not converge").into());
+            }
+        }
+        Command::Mbpt {
+            fcidump,
+            reference,
+            order,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let reference = Reference::load(&reference)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let result = solve_mbpt(&operator, &reference.active_orbital_energies, order)?;
+            println!("reference energy: {:.15}", result.reference_energy);
+            for index in 0..order {
+                println!(
+                    "order {:2}: correction={:.15e}  total={:.15}",
+                    index + 1,
+                    result.corrections[index],
+                    result.partial_sums[index]
+                );
+            }
+        }
+        Command::Ucc {
+            fcidump,
+            rank,
+            gradient_tolerance,
+            max_iterations,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let model = UnitaryCcModel::new(&operator, rank)?;
+            let result = model.optimize(&BfgsConfig {
+                gradient_tolerance,
+                max_iterations,
+                finite_difference_step: 1e-5,
+            });
+            println!("UCC({rank}) energy: {:.15}", result.value);
+            println!("gradient norm: {:.3e}", result.gradient_norm);
+            println!("iterations: {}", result.iterations);
+            println!("parameters: {}", result.parameters.len());
+            println!("converged: {}", result.converged);
+            if !result.converged {
+                return Err(format!("UCC({rank}) did not converge").into());
             }
         }
         Command::Verify {

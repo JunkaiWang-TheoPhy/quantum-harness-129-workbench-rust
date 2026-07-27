@@ -13,7 +13,7 @@ import sys
 
 import pyscf
 import numpy
-from pyscf import ao2mo, cc, fci, gto, scf
+from pyscf import ao2mo, cc, fci, gto, mp, scf
 from pyscf.tools import fcidump
 
 
@@ -133,6 +133,9 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
     ccsd.conv_tol = 1e-12
     correlation_energy, _, _ = ccsd.kernel()
     ccsd_total_energy = hf_energy + float(correlation_energy)
+    mp2 = mp.MP2(mf, frozen=list(frozen) or None)
+    mp2_correlation_energy, _ = mp2.kernel()
+    mp2_total_energy = hf_energy + float(mp2_correlation_energy)
 
     reference: dict[str, object] = {
         "schema_version": 1,
@@ -159,6 +162,8 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "fci_energy": float(fci_energy),
         "ccsd_correlation_energy": float(correlation_energy),
         "ccsd_total_energy": ccsd_total_energy,
+        "mp2_correlation_energy": float(mp2_correlation_energy),
+        "mp2_total_energy": mp2_total_energy,
         "fcidump_sha256": sha256(dump_path),
         "generator": "scripts/oracle/generate.py",
         "energy_unit": "hartree",

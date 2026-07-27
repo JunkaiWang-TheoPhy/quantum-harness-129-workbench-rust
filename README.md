@@ -77,6 +77,18 @@ cargo run --release -- cc \
 
 See [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md).
 
+## Level 3 Status
+
+All three Level 3 method families are implemented:
+
+- CI(n) as an excitation-rank projected matrix-free Davidson problem;
+- arbitrary-order MBPT recursion with order-by-order corrections;
+- variational unitary CC(n) using `exp(T-T†)` and BFGS optimization.
+
+H4 CI(4) and H2 UCC(2) reproduce their FCI limits. H2 MP2 matches the
+independent PySCF MP2 oracle. See
+[reports/level3-methods.md](reports/level3-methods.md).
+
 ## Scope
 
 - Parse FCIDUMP files generated from PySCF.
@@ -111,6 +123,8 @@ See [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md).
   matrix-free Davidson water benchmarks.
 - [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md) records
   arbitrary-order CC convergence and oracle comparisons.
+- [reports/level3-methods.md](reports/level3-methods.md) records CI(n),
+  MBPT(n), and unitary CC(n) results.
 
 ## Upstream Registration
 
