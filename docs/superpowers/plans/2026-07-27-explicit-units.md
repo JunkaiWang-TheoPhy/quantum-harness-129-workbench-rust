@@ -216,7 +216,7 @@ git diff -- fixtures/h2-sto3g/FCIDUMP fixtures/h4-sto3g/FCIDUMP fixtures/h2o-sto
 Expected: verification passes, H2O direct FCI remains
 `-75.012918738193051` Hartree, and FCIDUMP diff is empty.
 
-- [ ] **Step 3: Mark the plan complete, commit, and push**
+- [x] **Step 3: Mark the plan complete, commit, and push**
 
 Stage only the explicit-unit changes, commit them, push `main`, and verify that
 the local and remote commit IDs match.
