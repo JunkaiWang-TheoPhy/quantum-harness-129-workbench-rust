@@ -138,7 +138,7 @@ git commit -m "Add one-command submission verification"
 - Consumes: `scripts/verify-submission.sh`, `scripts/oracle/requirements.txt`, committed fixtures, release CLI commands.
 - Produces: a normal required-quality signal and a separately dispatchable primary numerical acceptance workflow.
 
-- [ ] **Step 1: Confirm no workflow currently exists**
+- [x] **Step 1: Confirm no workflow currently exists**
 
 Run:
 
@@ -148,7 +148,7 @@ test ! -d .github/workflows
 
 Expected: exit status zero.
 
-- [ ] **Step 2: Add the normal workflow**
+- [x] **Step 2: Add the normal workflow**
 
 Create `.github/workflows/ci.yml` with:
 
@@ -198,7 +198,7 @@ jobs:
         run: cargo +1.85.0 check --locked
 ```
 
-- [ ] **Step 3: Add the manual primary workflow**
+- [x] **Step 3: Add the manual primary workflow**
 
 Create `.github/workflows/primary-live.yml` with two independent jobs:
 
@@ -254,7 +254,7 @@ jobs:
             --max-iterations 100 --max-subspace 24
 ```
 
-- [ ] **Step 4: Validate workflow syntax and references**
+- [x] **Step 4: Validate workflow syntax and references**
 
 Use Ruby's bundled YAML parser with aliases enabled and verify every local
 path named by the workflows:
@@ -269,7 +269,7 @@ git diff --check
 
 Expected: all commands exit zero.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .github/workflows/ci.yml .github/workflows/primary-live.yml
