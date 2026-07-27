@@ -6,7 +6,7 @@ use ed_workbench_rs::ao2mo::transform_to_mo;
 use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
 use ed_workbench_rs::direct_fci::DirectFciOperator;
 use ed_workbench_rs::libcint_frontend::compute_ao_integrals;
-use ed_workbench_rs::molecule::Molecule;
+use ed_workbench_rs::molecule::{CoordinateUnit, Molecule};
 use ed_workbench_rs::operator::LinearOperator;
 use ed_workbench_rs::rhf::{RhfConfig, solve_rhf};
 use serde::Deserialize;
@@ -14,6 +14,9 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 struct AoReference {
     nao: usize,
+    coordinate_unit: String,
+    energy_unit: String,
+    overlap_unit: String,
     nuclear_repulsion_energy: f64,
     overlap: Vec<f64>,
     hcore: Vec<f64>,
@@ -80,7 +83,11 @@ fn direct_fci(problem: ed_workbench_rs::problem::ElectronicProblem) -> f64 {
 #[test]
 fn h2_libcint_rhf_ao2mo_and_fci_match_pyscf() {
     let expected = reference("h2-sto3g");
+    assert_eq!(expected.coordinate_unit, "angstrom");
+    assert_eq!(expected.energy_unit, "hartree");
+    assert_eq!(expected.overlap_unit, "dimensionless");
     let integrals = compute_ao_integrals(&Molecule::h2_sto3g()).unwrap();
+    assert_eq!(integrals.coordinate_unit, CoordinateUnit::Angstrom);
     assert_eq!(integrals.nao, expected.nao);
     assert!(
         (integrals.nuclear_repulsion - expected.nuclear_repulsion_energy).abs() < 1e-9,
@@ -138,7 +145,11 @@ fn h2_libcint_rhf_ao2mo_and_fci_match_pyscf() {
 #[test]
 fn h2o_libcint_rhf_ao2mo_and_fci_match_pyscf() {
     let expected = reference("h2o-sto3g");
+    assert_eq!(expected.coordinate_unit, "angstrom");
+    assert_eq!(expected.energy_unit, "hartree");
+    assert_eq!(expected.overlap_unit, "dimensionless");
     let integrals = compute_ao_integrals(&Molecule::h2o_sto3g()).unwrap();
+    assert_eq!(integrals.coordinate_unit, CoordinateUnit::Angstrom);
     assert!(
         max_error(&integrals.overlap, &expected.overlap) < 1e-8,
         "overlap error {}",
@@ -208,5 +219,7 @@ fn direct_integrals_cli_runs_without_python() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("FCI total energy: -1.015468249"));
+    assert!(stdout.contains("coordinate unit: angstrom"));
+    assert!(stdout.contains("energy unit: hartree"));
     assert!(stdout.contains("converged: true"));
 }

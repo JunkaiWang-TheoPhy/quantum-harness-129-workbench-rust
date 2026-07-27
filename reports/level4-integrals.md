@@ -1,6 +1,7 @@
 # Level 4 Direct-Integral Validation
 
 Date: 2026-07-27
+Coordinate input unit: angstrom
 Energy unit: hartree
 
 ## Result
@@ -14,6 +15,30 @@ molecule -> libcint AO integrals -> RHF/DIIS -> AO-to-MO -> direct FCI/Davidson
 
 Python and PySCF are not runtime dependencies. PySCF 2.14.0 is used only to
 generate committed, independently reproducible oracle data.
+
+## Unit and Geometry Contract
+
+| Quantity | External/input unit | Internal representation |
+|---|---|---|
+| Cartesian geometry | Angstrom | converted to Bohr by PySCF/libcint |
+| total, orbital, and nuclear-repulsion energies | Hartree | `f64` Hartree |
+| one- and two-electron integrals | Hartree | `f64` Hartree |
+| AO overlap | dimensionless | `f64` |
+| MO coefficients and CI/CC amplitudes | dimensionless | `f64` |
+| bond angles | degree in metadata | Cartesian vectors internally |
+
+The exact committed geometries are:
+
+| System | Geometry |
+|---|---|
+| equilibrium H2/STO-3G | `R(H-H)=0.7414 Å` |
+| stretched H2/STO-3G | atoms at `z=-0.7 Å` and `z=+0.7 Å`; therefore `R(H-H)=1.4 Å` |
+| linear H4/STO-3G | atoms at `z=-1.5,-0.5,0.5,1.5 Å`; adjacent spacing `1.0 Å` |
+| H2O/STO-3G | `R(O-H)=0.967 Å`, `angle(H-O-H)=107.6°` |
+| H2O/6-31G frozen core | the same `0.967 Å`, `107.6°` water geometry |
+
+Reference JSON files carry `coordinate_unit`, `geometry_parameters`, and
+`energy_unit`. AO reference files additionally mark overlap as dimensionless.
 
 ## Implementation
 

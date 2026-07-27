@@ -74,3 +74,15 @@ Completed Levels 1-4:
 - Recorded the final indexed scatter-add, mutable/output-buffer, BLAS-1,
   layout, numerical, performance, and API findings in
   `reports/tenferro-gap-list.md`.
+
+Made geometry and numerical units explicit:
+
+- Added `coordinate_unit` and machine-readable geometry parameters to every
+  oracle system and reference JSON.
+- Recorded that equilibrium H2 uses `R(H-H)=0.7414 Angstrom`, stretched H2
+  uses `R(H-H)=1.4 Angstrom`, linear H4 uses `1.0 Angstrom` adjacent spacing,
+  and water uses `R(O-H)=0.967 Angstrom` with `HOH=107.6 degrees`.
+- Added a typed Rust `CoordinateUnit` propagated into libcint and printed both
+  coordinate and Hartree energy units in the CLI.
+- Added Python and Rust geometry regressions so coordinate positions cannot be
+  confused with bond lengths.

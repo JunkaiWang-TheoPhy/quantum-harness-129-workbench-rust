@@ -1,5 +1,7 @@
 {
   "basis": "sto-3g",
+  "coordinate_unit": "angstrom",
+  "energy_unit": "hartree",
   "eri_ao": [
     4.785065404705503,
     0.7413803519734079,
@@ -5023,6 +5025,7 @@
     0.2352506213391607,
     1.0000000000000004
   ],
+  "overlap_unit": "dimensionless",
   "pyscf_version": "2.14.0",
   "rhf_total_energy": -74.96266306763113,
   "schema_version": 1,

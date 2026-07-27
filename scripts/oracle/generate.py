@@ -25,6 +25,8 @@ class System:
     basis: str = "sto-3g"
     charge: int = 0
     spin: int = 0
+    coordinate_unit: str = "Angstrom"
+    geometry_parameters: tuple[tuple[str, float, str], ...] = ()
     frozen_orbitals: tuple[int, ...] = ()
 
 
@@ -32,28 +34,44 @@ SYSTEMS = {
     "h2-sto3g": System(
         slug="h2-sto3g",
         name="H2",
+        # Cartesian coordinates in Angstrom: R(H-H) = 1.4 Angstrom.
         atom="H 0 0 -0.7; H 0 0 0.7",
+        geometry_parameters=(("R(H-H)", 1.4, "angstrom"),),
     ),
     "h2-equilibrium-sto3g": System(
         slug="h2-equilibrium-sto3g",
         name="H2 equilibrium",
+        # Cartesian coordinates in Angstrom: R(H-H) = 0.7414 Angstrom.
         atom="H 0 0 -0.3707; H 0 0 0.3707",
+        geometry_parameters=(("R(H-H)", 0.7414, "angstrom"),),
     ),
     "h4-sto3g": System(
         slug="h4-sto3g",
         name="linear H4",
+        # Cartesian coordinates in Angstrom: adjacent R(H-H) = 1.0 Angstrom.
         atom="H 0 0 -1.5; H 0 0 -0.5; H 0 0 0.5; H 0 0 1.5",
+        geometry_parameters=(("adjacent R(H-H)", 1.0, "angstrom"),),
     ),
     "h2o-sto3g": System(
         slug="h2o-sto3g",
         name="H2O",
+        # Cartesian Angstrom: R(O-H) = 0.967, angle(H-O-H) = 107.6 degree.
         atom="O 0 0 0; H 0.967 0 0; H -0.2923916843556798 0.9217353757557798 0",
+        geometry_parameters=(
+            ("R(O-H)", 0.967, "angstrom"),
+            ("angle(H-O-H)", 107.6, "degree"),
+        ),
     ),
     "h2o-631g-fc": System(
         slug="h2o-631g-fc",
         name="H2O frozen core",
+        # Same equilibrium water geometry as h2o-sto3g; Cartesian Angstrom.
         atom="O 0 0 0; H 0.967 0 0; H -0.2923916843556798 0.9217353757557798 0",
         basis="6-31g",
+        geometry_parameters=(
+            ("R(O-H)", 0.967, "angstrom"),
+            ("angle(H-O-H)", 107.6, "degree"),
+        ),
         frozen_orbitals=(0,),
     ),
 }
@@ -77,7 +95,7 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         basis=system.basis,
         charge=system.charge,
         spin=system.spin,
-        unit="Angstrom",
+        unit=system.coordinate_unit,
         symmetry=False,
         verbose=0,
     )
@@ -147,6 +165,11 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "system": system.name,
         "slug": system.slug,
         "geometry_angstrom": system.atom,
+        "coordinate_unit": system.coordinate_unit.lower(),
+        "geometry_parameters": [
+            {"name": name, "value": value, "unit": unit}
+            for name, value, unit in system.geometry_parameters
+        ],
         "basis": system.basis,
         "charge": system.charge,
         "spin": system.spin,
@@ -182,6 +205,9 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "schema_version": 1,
         "system": system.name,
         "basis": system.basis,
+        "coordinate_unit": system.coordinate_unit.lower(),
+        "energy_unit": "hartree",
+        "overlap_unit": "dimensionless",
         "nao": int(mol.nao_nr()),
         "nelec": int(mol.nelectron),
         "nuclear_repulsion_energy": float(mol.energy_nuc()),

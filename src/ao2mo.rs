@@ -104,6 +104,7 @@ fn index4(n: usize, p: usize, q: usize, r: usize, s: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::molecule::CoordinateUnit;
     use crate::rhf::RhfResult;
 
     #[test]
@@ -112,6 +113,7 @@ mod tests {
         let integrals = AoIntegrals {
             nao: n,
             nelec: 2,
+            coordinate_unit: CoordinateUnit::Angstrom,
             basis_provenance: "synthetic unit test".to_string(),
             nuclear_repulsion: 0.7,
             overlap: vec![1.0, 0.0, 0.0, 1.0],

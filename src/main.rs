@@ -11,7 +11,7 @@ use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
 use ed_workbench_rs::direct_fci::DirectFciOperator;
 use ed_workbench_rs::fcidump::Fcidump;
-use ed_workbench_rs::libcint_frontend::compute_ao_integrals;
+use ed_workbench_rs::libcint_frontend::{ENERGY_UNIT, compute_ao_integrals};
 use ed_workbench_rs::mbpt::solve_mbpt;
 use ed_workbench_rs::molecule::Molecule;
 use ed_workbench_rs::operator::LinearOperator;
@@ -306,6 +306,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("atomic orbitals: {}", integrals.nao);
             println!("electrons: {}", integrals.nelec);
             println!("basis provenance: {}", integrals.basis_provenance);
+            println!("coordinate unit: {}", integrals.coordinate_unit);
+            println!("energy unit: {ENERGY_UNIT}");
             println!("nuclear repulsion: {:.15}", integrals.nuclear_repulsion);
             println!("RHF total energy: {:.15}", result.total_energy);
             println!("density RMS: {:.3e}", result.density_rms);
@@ -360,6 +362,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("atomic/molecular orbitals: {}", integrals.nao);
             println!("electrons: {}", integrals.nelec);
             println!("basis provenance: {}", integrals.basis_provenance);
+            println!("coordinate unit: {}", integrals.coordinate_unit);
+            println!("energy unit: {ENERGY_UNIT}");
             println!("determinants: {}", operator.dimension());
             println!("RHF total energy: {:.15}", rhf.total_energy);
             println!("FCI total energy: {:.15}", result.energy);

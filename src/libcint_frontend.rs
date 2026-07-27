@@ -1,12 +1,15 @@
 use libcint::prelude::*;
 use thiserror::Error;
 
-use crate::molecule::Molecule;
+use crate::molecule::{CoordinateUnit, Molecule};
+
+pub const ENERGY_UNIT: &str = "hartree";
 
 #[derive(Debug, Clone)]
 pub struct AoIntegrals {
     pub nao: usize,
     pub nelec: usize,
+    pub coordinate_unit: CoordinateUnit,
     pub basis_provenance: String,
     pub nuclear_repulsion: f64,
     pub overlap: Vec<f64>,
@@ -50,8 +53,10 @@ pub fn compute_ao_integrals(molecule: &Molecule) -> Result<AoIntegrals, Integral
         format!("basis = \"{}\"\n", molecule.basis)
     };
     let input = format!(
-        "atom = \"{}\"\nunit = \"angstrom\"\n{}",
-        molecule.atom, basis_input
+        "atom = \"{}\"\nunit = \"{}\"\n{}",
+        molecule.atom,
+        molecule.coordinate_unit.libcint_name(),
+        basis_input
     );
     let built =
         CIntMol::from_toml_f(&input).map_err(|error| IntegralError::Build(format!("{error:?}")))?;
@@ -88,6 +93,7 @@ pub fn compute_ao_integrals(molecule: &Molecule) -> Result<AoIntegrals, Integral
     Ok(AoIntegrals {
         nao,
         nelec: nelec_signed as usize,
+        coordinate_unit: molecule.coordinate_unit,
         basis_provenance: if molecule.basis.eq_ignore_ascii_case("sto-3g") {
             "PySCF 2.14.0 STO-3G values embedded as NWChem text".to_string()
         } else {

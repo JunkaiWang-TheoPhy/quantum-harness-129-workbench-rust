@@ -12,6 +12,21 @@ It does not replace the cited papers or official API documentation.
 - Frozen core: oxygen 1s.
 - Expected FCI energy: `-76.121174 hartree`.
 
+## Explicit Unit Contract for Committed Fixtures
+
+- Every Cartesian coordinate string in `scripts/oracle/generate.py` is in
+  Angstrom and is passed to PySCF with `unit=system.coordinate_unit`.
+- PySCF and libcint convert those coordinates to Bohr internally.
+- Equilibrium H2 uses `R(H-H)=0.7414 Angstrom`.
+- The stretched-H2 fixture uses positions `-0.7` and `+0.7` Angstrom, which
+  means `R(H-H)=1.4 Angstrom`.
+- Linear H4 has `1.0 Angstrom` between adjacent atoms.
+- Both water fixtures use `R(O-H)=0.967 Angstrom` and
+  `HOH=107.6 degrees`.
+- Energies, orbital energies, nuclear repulsion, and energy-valued integrals
+  are in Hartree. AO overlap, MO coefficients, and CI/CC amplitudes are
+  dimensionless.
+
 Extended targets:
 
 - Water/DZ, all electrons: `-76.156699 hartree`.

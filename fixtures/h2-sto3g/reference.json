@@ -8,6 +8,7 @@
   "ccsd_correlation_energy": -0.07398759459103375,
   "ccsd_total_energy": -1.0154682492988325,
   "charge": 0,
+  "coordinate_unit": "angstrom",
   "energy_unit": "hartree",
   "fci_converged": true,
   "fci_energy": -1.0154682492882454,
@@ -15,6 +16,13 @@
   "frozen_orbitals": [],
   "generator": "scripts/oracle/generate.py",
   "geometry_angstrom": "H 0 0 -0.7; H 0 0 0.7",
+  "geometry_parameters": [
+    {
+      "name": "R(H-H)",
+      "unit": "angstrom",
+      "value": 1.4
+    }
+  ],
   "hf_converged": true,
   "hf_energy": -0.9414806547077987,
   "mp2_correlation_energy": -0.03908905485819417,

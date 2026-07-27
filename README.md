@@ -105,6 +105,21 @@ The direct-integral stack is complete for H2 and H2O/STO-3G:
   orbital energies, and final FCI energies;
 - the checked production commands have no Python runtime dependency.
 
+The geometry and numerical units are explicit:
+
+| Quantity | Unit |
+|---|---|
+| committed Cartesian input coordinates | Angstrom (`Å`) |
+| PySCF/libcint internal coordinates | Bohr |
+| total, orbital, nuclear-repulsion, and integral energies | Hartree (`E_h`) |
+| overlap, MO coefficients, and CI/CC amplitudes | dimensionless |
+| geometry angles | degree |
+
+The equilibrium H2 fixture has `R(H-H)=0.7414 Å`. The original stretched-H2
+fixture uses `z=-0.7 Å` and `z=+0.7 Å`, so its bond length is
+`R(H-H)=1.4 Å`—not `0.7 Å`. Linear H4 has `1.0 Å` adjacent spacing. Both
+water fixtures use `R(O-H)=0.967 Å` and `angle(H-O-H)=107.6°`.
+
 ```bash
 cargo run --release -- rhf h2o-sto3g
 cargo run --release -- direct-integrals-fci h2-sto3g
