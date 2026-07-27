@@ -13,7 +13,8 @@ Source: https://github.com/QuantumBFS/quantum.harness/issues/129
 | Released by | Guo CHEN, HKUST(GZ) |
 | Contact | guochen@hkust-gz.edu.cn |
 | Method / track | Exact Diagonalization / `ed` |
-| Registration PR | https://github.com/QuantumBFS/quantum.harness/pull/210 |
+| Active solution PR | https://github.com/QuantumBFS/quantum.harness/pull/217 |
+| Superseded registration PR | https://github.com/QuantumBFS/quantum.harness/pull/210 |
 | Working repo | https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust |
 | Registered team | Rewrite It In Rust! (RIIR 2607 Hefei) |
 | Members | Chenxi Wan, Yedi Shen, Junkai Wang |

@@ -9,6 +9,26 @@ The goal is to build a Rust reference implementation for determinant-based
 FCI/ED machinery, with arbitrary-order coupled cluster as the mandatory
 showcase.
 
+## Challenge Status
+
+The mandatory #129 path is complete on the primary H2O/6-31G frozen-core
+Hamiltonian. The earlier all-amplitude CC exponential bottleneck was replaced
+by an exact excitation-rank subset-convolution recurrence, with the original
+Taylor expansion retained as an independent small-system oracle.
+
+- Direct Davidson FCI converges in the full 245,025-determinant space.
+- CC(1)-CC(8) matches all eight equilibrium CC entries in Hirata 2000
+  Table 2 at the six decimals printed by the paper.
+- CI(1)-CI(8) and MBPT(1)-MBPT(20) match all 28 corresponding Table 2
+  entries.
+- The Level 0 oracle, mandatory Levels 1-2, stretch Levels 3-4, tenferro gap
+  list, machine-readable evidence, and upstream reproduction materials are
+  committed.
+
+The Kállay 2001 DZ/DZP calculations remain explicitly identified as extended
+targets; no primary 6-31G result is presented as evidence for those different
+Hamiltonians.
+
 ## Level 0 Status
 
 Level 0 is complete for equilibrium and stretched H2 plus linear H4/STO-3G
@@ -185,7 +205,7 @@ collision-reducing scatter-add with explicit deterministic semantics.
   submission prompt with exact revision, checksums, commands, tolerances,
   expected tables, and failure-reporting requirements.
 - [docs/sync-log.md](docs/sync-log.md) records what was pulled from GitHub and
-  how this private repo relates to the public Quantum Harness registration PR.
+  how this public workbench relates to the Quantum Harness solution PR.
 - [docs/upstream-metadata.json](docs/upstream-metadata.json) is the
   machine-readable counterpart of the dated snapshot.
 - [reports/level0-accuracy.md](reports/level0-accuracy.md) records the first

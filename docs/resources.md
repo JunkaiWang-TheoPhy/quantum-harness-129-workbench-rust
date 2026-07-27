@@ -6,11 +6,12 @@ known for Challenge #129.
 ## Quantum Harness
 
 - Challenge issue: https://github.com/QuantumBFS/quantum.harness/issues/129
-- Registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
+- Active solution PR: https://github.com/QuantumBFS/quantum.harness/pull/217
+- Superseded registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
 - Official repository: https://github.com/QuantumBFS/quantum.harness
 - Project website: http://yaoquantum.org/quantum.harness/
 - ED track: https://github.com/QuantumBFS/quantum.harness/tree/main/tracks/ed
-- Private working repository: https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust
+- Public workbench: https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust
 
 The complete dated state and provenance are recorded in
 [`web-and-github-snapshot.md`](web-and-github-snapshot.md).
@@ -85,12 +86,12 @@ The complete dated state and provenance are recorded in
 ## Notes From Current Web/GitHub Inspection
 
 - As checked on 2026-07-27, the upstream issue is open and accepted.
-- As checked on 2026-07-27, registration PR #210 is open, non-draft,
-  mergeable, has no checks reported, and targets
+- Registration PR #210 was closed and superseded by solution PR
+  [#217](https://github.com/QuantumBFS/quantum.harness/pull/217). As checked
+  on 2026-07-27, #217 is open, non-draft, mergeable, and targets
   `QuantumBFS/quantum.harness:main`.
-- The private working repo is intentionally separate from the public registration
-  PR because challenge development may include intermediate experiments,
-  generated fixtures, and AGPL-licensed code before final submission.
+- The AGPL-3.0 workbench repository is public so reviewers can clone the exact
+  revision referenced by #217 and run the standalone reproduction prompt.
 - Repository/release versions in the dated snapshot are discovery aids, not
   dependency pins. Actual code must pin versions in `Cargo.lock` and the Python
   oracle environment.

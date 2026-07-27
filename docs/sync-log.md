@@ -2,10 +2,11 @@
 
 ## 2026-07-27
 
-Created private repository:
+Created the workbench repository privately during development, then published
+it for reproducible challenge review:
 
 - Repository: `JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`
-- Visibility: private
+- Visibility: public as of 2026-07-27
 - License: AGPL-3.0
 - Local path: `/Users/thomasjwang/Documents/GitHub/quantum-harness-129-ed-workbench-rust`
 
@@ -107,3 +108,26 @@ Completed the primary published-table acceptance:
 - Committed exact machine-readable values, performance and environment
   records, regression tests, accuracy reports, and the standalone
   `docs/reproduction-prompt.md`.
+
+Completed the final submission audit:
+
+- Published the dedicated AGPL-3.0 workbench and confirmed anonymous HTTP
+  access returns `200`.
+- Re-ran primary matrix-free Davidson FCI:
+  `-76.121174204141980 hartree`, residual `5.044e-8`, 16 iterations.
+- Previously completed live primary runs remain locked in committed
+  machine-readable records: CC(1)-CC(8) in 186.94 seconds and combined
+  CI(1)-CI(8)/MBPT(1)-MBPT(20) in 190.08 seconds on an Apple M4 with 10 Rayon
+  workers.
+- `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  `cargo test --locked`, `git diff --check`, and five Python geometry/unit
+  regressions all passed. The Rust suite reported 57 passing tests and two
+  intentionally ignored long live-primary tests; both corresponding live
+  calculations were executed separately.
+- Validated every tracked JSON document with `jq`, checked all five FCIDUMP
+  files against their recorded SHA-256 values, and confirmed no pre-existing
+  FCIDUMP or numerical reference JSON changed during the final implementation.
+- Confirmed solution PR
+  [#217](https://github.com/QuantumBFS/quantum.harness/pull/217) is open and
+  mergeable and contains both the full design README and standalone
+  reproduction prompt.

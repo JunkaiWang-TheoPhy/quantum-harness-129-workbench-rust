@@ -546,13 +546,13 @@ history.
 Explain architecture decisions, exact primary acceptance results, performance,
 limitations, the direct-libcint stretch path, and tenferro gap-list link.
 
-- [ ] **Step 3: Fetch the upstream PR branch safely**
+- [x] **Step 3: Fetch the upstream PR branch safely**
 
 Use a separate temporary clone or worktree. Confirm PR #217's head branch and
 current commit before modifying only
 `tracks/ed/solutions/WangTheoPhys/`.
 
-- [ ] **Step 4: Update the upstream solution directory**
+- [x] **Step 4: Update the upstream solution directory**
 
 The README must include:
 
@@ -565,7 +565,7 @@ The README must include:
 - reproduction commands and prompt link;
 - license and provenance.
 
-- [ ] **Step 5: Commit and push both repositories**
+- [x] **Step 5: Commit and push both repositories**
 
 Push the workbench first, then update the upstream README to the pushed commit
 and push PR #217's branch without force.
@@ -580,7 +580,7 @@ and push PR #217's branch without force.
 **Interfaces:**
 - Produces: proof that every mandatory deliverable is present and current.
 
-- [ ] **Step 1: Run local quality gates**
+- [x] **Step 1: Run local quality gates**
 
 ```bash
 cargo fmt --check
@@ -590,24 +590,36 @@ cargo test
 git diff --check
 ```
 
-- [ ] **Step 2: Run numerical acceptance commands**
+- [x] **Step 2: Run numerical acceptance commands**
 
 ```bash
-target/release/ed_workbench_rs verify \
-  fixtures/h2o-631g-fc/FCIDUMP fixtures/h2o-631g-fc/reference.json
+RAYON_NUM_THREADS=10 target/release/ed_workbench_rs davidson \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  --residual-tolerance 1e-7 --max-iterations 60 --max-subspace 20
 target/release/ed_workbench_rs cc-series \
   fixtures/h2o-631g-fc/FCIDUMP \
   fixtures/h2o-631g-fc/reference.json \
   --published-reference fixtures/h2o-631g-fc/hirata2000-table2.json \
   --max-rank 8 --residual-tolerance 1e-6
+target/release/ed_workbench_rs level3-series \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  fixtures/h2o-631g-fc/reference.json \
+  --published-reference fixtures/h2o-631g-fc/hirata2000-table2.json \
+  --max-ci-rank 8 --max-mbpt-order 20 \
+  --ci-residual-tolerance 1e-7 \
+  --max-iterations 100 --max-subspace 24
 ```
 
-- [ ] **Step 3: Audit immutable oracle data**
+The dense `verify` command is intentionally not used for the
+245,025-determinant primary space. Full-space CI(8) and the matrix-free
+Davidson run independently recover the FCI energy.
+
+- [x] **Step 3: Audit immutable oracle data**
 
 Verify all FCIDUMP checksums, confirm no existing numerical reference field
 changed, and validate every committed JSON file with `jq`.
 
-- [ ] **Step 4: Audit deliverables**
+- [x] **Step 4: Audit deliverables**
 
 Confirm:
 
@@ -618,7 +630,7 @@ Confirm:
 - upstream PR #217 contains the design README and reproduction prompt;
 - all source links, commit IDs, commands, units, and checksums resolve.
 
-- [ ] **Step 5: Mark the plan complete, commit, push, and compare refs**
+- [x] **Step 5: Mark the plan complete, commit, push, and compare refs**
 
 Mark every completed checkbox, commit the completion record, push, and require
 local `HEAD`, workbench `origin/main`, and the commit referenced by upstream

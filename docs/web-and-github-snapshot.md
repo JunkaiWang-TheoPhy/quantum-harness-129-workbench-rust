@@ -38,7 +38,7 @@ Implementation-critical points in the issue:
 - Level 4 can use the Rust `libcint` crate to build a direct-integral RHF and
   AO-to-MO path.
 
-## Registration PR
+## Original Registration PR Snapshot
 
 Source: https://github.com/QuantumBFS/quantum.harness/pull/210
 
@@ -59,6 +59,18 @@ The PR contains two commits at snapshot time:
 
 - `56d93d0` — Register WangTheoPhys ED workbench challenge.
 - `641aeef` — Update WangTheoPhys ED workbench repo name.
+
+PR #210 was subsequently closed and superseded by active solution PR
+[#217](https://github.com/QuantumBFS/quantum.harness/pull/217). As re-checked
+on 2026-07-27, #217 is open, non-draft, mergeable, uses the same head branch,
+and contains:
+
+- `tracks/ed/solutions/WangTheoPhys/README.md`
+- `tracks/ed/solutions/WangTheoPhys/reproduction-prompt.md`
+
+The dedicated AGPL-3.0 workbench was also made public for anonymous
+reproduction:
+https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust
 
 ## Narrow Ecosystem Context
 

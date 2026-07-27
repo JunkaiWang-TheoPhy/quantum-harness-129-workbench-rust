@@ -5,10 +5,11 @@
     "local_path": "/Users/thomasjwang/Documents/GitHub/quantum-harness-129-ed-workbench-rust",
     "repository": "JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust",
     "url": "https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust",
-    "visibility": "private",
+    "visibility": "public",
     "default_branch": "main",
     "license": "AGPL-3.0",
-    "created_at": "2026-07-27T10:25:48Z"
+    "created_at": "2026-07-27T10:25:48Z",
+    "published_at": "2026-07-27T14:17:42Z"
   },
   "quantum_harness": {
     "repository": "QuantumBFS/quantum.harness",
@@ -29,18 +30,30 @@
       "created_at": "2026-07-24T14:40:29Z",
       "updated_at": "2026-07-26T01:42:00Z"
     },
-    "registration_pr": {
+    "superseded_registration_pr": {
       "number": 210,
       "title": "[e.d.] Rewrite It In Rust! —— Rust ED/FCI workbench for electronic-structure methods",
       "url": "https://github.com/QuantumBFS/quantum.harness/pull/210",
+      "state": "CLOSED",
+      "draft": false,
+      "mergeability_at_close": "MERGEABLE",
+      "base": "main",
+      "head": "JunkaiWang-TheoPhy:challenge/ed-wangtheophys-rust-workbench",
+      "created_at": "2026-07-27T10:27:32Z",
+      "closed_at": "2026-07-27T11:35:32Z"
+    },
+    "solution_pr": {
+      "number": 217,
+      "title": "[e.d.](RIIR) Rewrite It In Rust!: rust ED/FCI workbench for electronic-structure methods",
+      "url": "https://github.com/QuantumBFS/quantum.harness/pull/217",
       "state": "OPEN",
       "draft": false,
       "mergeability": "MERGEABLE",
       "base": "main",
       "head": "JunkaiWang-TheoPhy:challenge/ed-wangtheophys-rust-workbench",
       "solution_path": "tracks/ed/solutions/WangTheoPhys/README.md",
-      "created_at": "2026-07-27T10:27:32Z",
-      "updated_at": "2026-07-27T10:35:33Z"
+      "created_at": "2026-07-27T11:35:45Z",
+      "updated_at": "2026-07-27T14:13:29Z"
     },
     "related_issues": [
       {
