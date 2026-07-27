@@ -1,6 +1,6 @@
 # ED Workbench RS
 
-Private workspace for Quantum Harness challenge
+Public AGPL-3.0 workbench for Quantum Harness challenge
 [#129](https://github.com/QuantumBFS/quantum.harness/issues/129):
 **Exact diagonalization workbench in Rust for electronic structure method
 development**.
@@ -174,6 +174,26 @@ The required ecosystem findings are recorded in
 already supplies dense tensors, strided views, gather/scatter, division,
 reductions, and contractions; the primary determinant-workload gap is
 collision-reducing scatter-add with explicit deterministic semantics.
+
+## Verification
+
+Install the pinned Python oracle environment once:
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
+```
+
+Then run every normal submission gate—Rust formatting, Clippy, locked tests,
+tracked-JSON validation, FCIDUMP checksums, Python unit/geometry tests, and
+diff hygiene—with one command:
+
+```bash
+scripts/verify-submission.sh
+```
+
+Set `PYTHON=python3` when the pinned oracle dependencies are installed in the
+active interpreter rather than `.venv`.
 
 ## Scope
 

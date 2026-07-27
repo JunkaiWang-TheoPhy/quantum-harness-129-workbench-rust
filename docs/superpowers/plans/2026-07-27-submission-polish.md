@@ -31,7 +31,7 @@
 - Consumes: repository root, `Cargo.lock`, tracked JSON files, fixture `reference.json` files, neighboring FCIDUMP files, and a Python interpreter selected by `PYTHON` or `.venv/bin/python`.
 - Produces: exit status zero only when normal Rust, Python, JSON, and checksum gates pass.
 
-- [ ] **Step 1: Verify the command is initially absent**
+- [x] **Step 1: Verify the command is initially absent**
 
 Run:
 
@@ -41,7 +41,7 @@ test ! -e scripts/verify-submission.sh
 
 Expected: exit status zero.
 
-- [ ] **Step 2: Create the fail-fast verifier**
+- [x] **Step 2: Create the fail-fast verifier**
 
 Create an executable Bash script with this behavior:
 
@@ -94,7 +94,7 @@ Make it executable:
 chmod +x scripts/verify-submission.sh
 ```
 
-- [ ] **Step 3: Run the verifier locally**
+- [x] **Step 3: Run the verifier locally**
 
 Run:
 
@@ -104,7 +104,7 @@ scripts/verify-submission.sh
 
 Expected: 57 Rust tests and five Python tests pass; two long live-primary Rust tests remain ignored; all JSON and checksums pass.
 
-- [ ] **Step 4: Document the single-command path**
+- [x] **Step 4: Document the single-command path**
 
 Add to the README verification section:
 
@@ -119,7 +119,7 @@ Set `PYTHON=python3` when the pinned oracle dependencies are installed in the
 active interpreter rather than `.venv`.
 ````
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/verify-submission.sh README.md
