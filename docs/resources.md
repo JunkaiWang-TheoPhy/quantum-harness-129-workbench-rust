@@ -8,7 +8,12 @@ known for Challenge #129.
 - Challenge issue: https://github.com/QuantumBFS/quantum.harness/issues/129
 - Registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
 - Official repository: https://github.com/QuantumBFS/quantum.harness
+- Project website: http://yaoquantum.org/quantum.harness/
+- ED track: https://github.com/QuantumBFS/quantum.harness/tree/main/tracks/ed
 - Private working repository: https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust
+
+The complete dated state and provenance are recorded in
+[`web-and-github-snapshot.md`](web-and-github-snapshot.md).
 
 ## Software Repositories
 
@@ -23,6 +28,26 @@ known for Challenge #129.
 | pounce | https://github.com/jkitchin/pounce | Candidate Rust optimization package mentioned by the challenge. |
 | Quantum Package | https://github.com/QuantumPackage/qp2 | Modern determinant-driven electronic-structure package for conceptual comparison. |
 | MRCC | https://www.mrcc.hu | Production general-order coupled-cluster reference named in the challenge. |
+| libcint Rust crate | https://crates.io/crates/libcint | Existing Rust bindings for the independent Level-4 integral path. |
+| libcint Rust API | https://docs.rs/libcint | `CInt`, molecule builders, integral evaluation, features, and linking instructions. |
+| REST | https://github.com/RESTGroup | Rust electronic-structure toolkit from which the libcint wrapper work grew. |
+| tenferro benchmark | https://github.com/tensor4all/tenferro-benchmark | Optional destination when a #129 performance gap needs a durable reproducer. |
+| tensor-ad-oracles | https://github.com/tensor4all/tensor-ad-oracles | Optional destination when #129 exposes a tensor/autodiff correctness gap. |
+
+## Implementation Documentation
+
+| Topic | URL | Why it matters |
+|---|---|---|
+| PySCF FCIDUMP API | https://pyscf.org/pyscf_api_docs/pyscf.tools.html#module-pyscf.tools.fcidump | Documents `from_scf`, `from_integrals`, `read`, and the real-Hamiltonian FCIDUMP interface. |
+| PySCF FCIDUMP source | https://pyscf.org/_modules/pyscf/tools/fcidump.html | Ground truth for header parsing, packed integral indexing, thresholds, and symmetry behavior. |
+| PySCF FCI API | https://pyscf.org/pyscf_api_docs/pyscf.fci.html | Oracle FCI solvers and contraction routines. |
+| PySCF CC API | https://pyscf.org/pyscf_api_docs/pyscf.cc.html | CCSD reference energies and amplitudes for Level 0/2 checks. |
+| PySCF AO-to-MO API | https://pyscf.org/pyscf_api_docs/pyscf.ao2mo.html | Reference transformation used before FCIDUMP export. |
+| tenferro guide | https://tensor4all.org/tenferro-rs/ | Architecture, first CPU example, tensor APIs, devices, and execution models. |
+| tenferro API index | https://tensor4all.org/tenferro-rs/api/ | Public crate boundaries for runtime, CPU, einsum, linalg, AD, FFT, and GPU. |
+| tenferro supported ops | https://tensor4all.org/tenferro-rs/design/supported-ops.html | Operational inventory to check before recording a missing-operation gap. |
+| tenferro specification | https://tensor4all.org/tenferro-rs/spec/ | Normative tensor, backend, AD, and operation contracts. |
+| libcint crate docs | https://docs.rs/libcint/latest/libcint/ | PySCF-style integral calls, row/column-major behavior, build features, and an RHF example. |
 
 ## Primary Literature Cited by the Challenge
 
@@ -46,12 +71,23 @@ known for Challenge #129.
 | Sun 2018 | https://doi.org/10.1002/wcms.1340 | PySCF reference. |
 | Smith 2018 | https://doi.org/10.1021/acs.jctc.8b00286 | Psi4NumPy reference-implementation philosophy. |
 | Hirata 2003 | https://doi.org/10.1021/jp034596z | Tensor Contraction Engine and symbolic code-generation route. |
+| Garniron 2019 | https://doi.org/10.1021/acs.jctc.9b00176 | Quantum Package 2.0 and modern determinant-driven electronic structure. |
+| Olsen 1990 | https://doi.org/10.1016/0009-2614(90)85633-N | Historic billion-determinant FCI milestone. |
+| Shayit 2025 | https://doi.org/10.1038/s41467-025-65967-7 | Quadrillion-determinant exact-CI scaling frontier cited upstream. |
+| Bauschlicher 1986 | https://doi.org/10.1063/1.451034 | Geometry and DZ/DZP basis settings for the extended targets. |
+| Bartlett 2007 | https://doi.org/10.1103/RevModPhys.79.291 | Modern coupled-cluster review. |
+| Crawford 2000 | https://doi.org/10.1002/9780470125915.ch2 | Pedagogical coupled-cluster introduction. |
+| Li 2025 | https://doi.org/10.1063/1674-0068/cjcp2510156 | REST and Rust-native electronic-structure context. |
 
 ## Notes From Current Web/GitHub Inspection
 
-- The upstream issue is open and accepted.
-- The registration PR #210 is open and targets `QuantumBFS/quantum.harness:main`.
+- As checked on 2026-07-27, the upstream issue is open and accepted.
+- As checked on 2026-07-27, registration PR #210 is open, non-draft,
+  mergeable, has no checks reported, and targets
+  `QuantumBFS/quantum.harness:main`.
 - The private working repo is intentionally separate from the public registration
   PR because challenge development may include intermediate experiments,
   generated fixtures, and AGPL-licensed code before final submission.
-
+- Repository/release versions in the dated snapshot are discovery aids, not
+  dependency pins. Actual code must pin versions in `Cargo.lock` and the Python
+  oracle environment.

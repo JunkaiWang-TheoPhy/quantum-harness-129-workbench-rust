@@ -27,16 +27,25 @@ showcase.
 - [docs/resources.md](docs/resources.md) indexes useful upstream GitHub and web
   resources, including PySCF, libcint, Psi4NumPy, tenferro-rs, and the cited
   literature.
+- [docs/web-and-github-snapshot.md](docs/web-and-github-snapshot.md) records a
+  dated, source-linked snapshot of the upstream issue, registration PR,
+  #129 dependency versions, and implementation documentation entry points.
+- [docs/reproducibility-notes.md](docs/reproducibility-notes.md) extracts the
+  implementation-sensitive conventions, APIs, targets, tolerances, and
+  provenance rules needed to reproduce the published calculations.
 - [docs/sync-log.md](docs/sync-log.md) records what was pulled from GitHub and
   how this private repo relates to the public Quantum Harness registration PR.
+- [docs/upstream-metadata.json](docs/upstream-metadata.json) is the
+  machine-readable counterpart of the dated snapshot.
 
 ## Upstream Registration
 
 - Challenge issue: https://github.com/QuantumBFS/quantum.harness/issues/129
 - Registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
 - Track folder: `tracks/ed/solutions/WangTheoPhys/`
-- Team: WangTheoPhys
-- Members: Junkai Wang, WangTheoPhys@outlook.com
+- Registered team: Rewrite It In Rust! (RIIR 2607 Hefei)
+- Members: Chenxi Wan, Yedi Shen, Junkai Wang
+- Solution directory identifier: WangTheoPhys
 
 ## License
 

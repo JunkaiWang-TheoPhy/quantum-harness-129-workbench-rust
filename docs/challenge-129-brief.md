@@ -15,6 +15,9 @@ Source: https://github.com/QuantumBFS/quantum.harness/issues/129
 | Method / track | Exact Diagonalization / `ed` |
 | Registration PR | https://github.com/QuantumBFS/quantum.harness/pull/210 |
 | Working repo | https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust |
+| Registered team | Rewrite It In Rust! (RIIR 2607 Hefei) |
+| Members | Chenxi Wan, Yedi Shen, Junkai Wang |
+| Solution directory | `tracks/ed/solutions/WangTheoPhys/` |
 
 ## Core Objective
 
@@ -59,6 +62,21 @@ Stretch levels:
 - Direct Rust integral path through libcint, removing PySCF as a runtime
   dependency after verification.
 
+## Scale and Convergence Notes
+
+The upstream issue gives the following practical estimates:
+
+| Target | Determinants / memory note |
+|---|---|
+| Water/6-31G, frozen core | 245,025 determinants; one FCI vector is about 2 MB |
+| Water/DZ, all electrons | Roughly 10^6 determinants in the relevant symmetry block; about 4 x 10^6 without spatial symmetry |
+| Water/DZP, frozen core | Roughly 2.8 x 10^7 determinants; one vector is a few hundred MB |
+
+Hirata 2000 declares convergence when the residual-vector norm falls below
+`1e-6`, which is expected to settle the energy to about `1e-7` hartree.
+Equilibrium calculations are mandatory; stretched geometries at 1.5 and 2.0
+times the equilibrium bond length are optional hard-mode tests.
+
 ## Numerical Anchors
 
 These values are copied from the upstream challenge description as target
@@ -81,3 +99,9 @@ Primary geometry: water equilibrium with r_OH = 0.967 Angstrom and HOH angle
 - `tenferro-rs` gap list.
 - Public Quantum Harness PR under `tracks/ed/solutions/WangTheoPhys/`.
 
+The gap list should explicitly cover indexed gather/scatter-add, mutable views
+and slicing, element-wise division, in-place BLAS-1 operations, memory layout,
+numerical behavior, performance, and API friction. Findings relevant to
+tenferro-rs should feed the canonical verification work in upstream issues
+[#114](https://github.com/QuantumBFS/quantum.harness/issues/114) and
+[#115](https://github.com/QuantumBFS/quantum.harness/issues/115).
