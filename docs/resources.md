@@ -8,7 +8,7 @@ known for Challenge #129.
 - Challenge issue: https://github.com/QuantumBFS/quantum.harness/issues/129
 - Registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
 - Official repository: https://github.com/QuantumBFS/quantum.harness
-- Private working repository: https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-ed-workbench-rust
+- Private working repository: https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust
 
 ## Software Repositories
 

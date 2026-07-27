@@ -14,7 +14,7 @@ Source: https://github.com/QuantumBFS/quantum.harness/issues/129
 | Contact | guochen@hkust-gz.edu.cn |
 | Method / track | Exact Diagonalization / `ed` |
 | Registration PR | https://github.com/QuantumBFS/quantum.harness/pull/210 |
-| Working repo | https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-ed-workbench-rust |
+| Working repo | https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust |
 
 ## Core Objective
 

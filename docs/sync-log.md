@@ -4,7 +4,7 @@
 
 Created private repository:
 
-- Repository: `JunkaiWang-TheoPhy/quantum-harness-129-ed-workbench-rust`
+- Repository: `JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`
 - Visibility: private
 - License: AGPL-3.0
 - Local path: `/Users/thomasjwang/Documents/GitHub/quantum-harness-129-ed-workbench-rust`
