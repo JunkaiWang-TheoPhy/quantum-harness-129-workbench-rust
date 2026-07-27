@@ -1,5 +1,11 @@
+pub mod active_space;
+pub mod davidson;
 pub mod dense_fci;
 pub mod determinant;
+pub mod direct_fci;
 pub mod fcidump;
 pub mod hamiltonian;
+pub mod operator;
+pub mod problem;
 pub mod reference;
+pub mod strings;

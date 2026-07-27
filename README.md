@@ -37,6 +37,26 @@ uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
 
 See [reports/level0-accuracy.md](reports/level0-accuracy.md) for exact results.
 
+## Level 1 Status
+
+Level 1 direct FCI is complete:
+
+- lexical alpha/beta string spaces and signed `E_pq` excitation links;
+- matrix-free spin-free sigma contraction without storing the Hamiltonian;
+- an independently computed Hamiltonian diagonal;
+- Davidson with residual preconditioning and restart;
+- H2O/STO-3G dense/direct/Davidson cross-validation;
+- the 245,025-determinant frozen-core H2O/6-31G target.
+
+```bash
+cargo run --release -- davidson fixtures/h2o-631g-fc/FCIDUMP \
+  --residual-tolerance 1e-7 --max-iterations 60 --max-subspace 20
+```
+
+The resulting energy is `-76.121174204141980` hartree with residual
+`5.044e-8`, matching both PySCF and the published `-76.121174` anchor. See
+[reports/level1-direct-fci.md](reports/level1-direct-fci.md).
+
 ## Scope
 
 - Parse FCIDUMP files generated from PySCF.
@@ -67,6 +87,8 @@ See [reports/level0-accuracy.md](reports/level0-accuracy.md) for exact results.
   machine-readable counterpart of the dated snapshot.
 - [reports/level0-accuracy.md](reports/level0-accuracy.md) records the first
   Rust-vs-PySCF numerical acceptance results.
+- [reports/level1-direct-fci.md](reports/level1-direct-fci.md) records the
+  matrix-free Davidson water benchmarks.
 
 ## Upstream Registration
 
