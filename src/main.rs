@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
+use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc};
 use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
@@ -36,6 +37,16 @@ enum Command {
         max_iterations: usize,
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
+    },
+    Cc {
+        fcidump: PathBuf,
+        reference: PathBuf,
+        #[arg(long)]
+        rank: usize,
+        #[arg(long, default_value_t = 1e-8)]
+        residual_tolerance: f64,
+        #[arg(long, default_value_t = 100)]
+        max_iterations: usize,
     },
     Verify {
         fcidump: PathBuf,
@@ -111,6 +122,41 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err("Davidson did not converge".into());
+            }
+        }
+        Command::Cc {
+            fcidump,
+            reference,
+            rank,
+            residual_tolerance,
+            max_iterations,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let reference = Reference::load(&reference)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let result = solve_cc(
+                &operator,
+                rank,
+                &reference.active_orbital_energies,
+                &CcConfig {
+                    residual_tolerance,
+                    energy_tolerance: residual_tolerance * 0.01,
+                    max_iterations,
+                    ..Default::default()
+                },
+            )?;
+            for item in &result.iterations {
+                println!(
+                    "iter {:3}  E={:.15}  dE={:.3e}  |R|={:.3e}",
+                    item.iteration, item.energy, item.energy_change, item.residual_norm
+                );
+            }
+            println!("CC({rank}) energy: {:.15}", result.energy);
+            println!("residual norm: {:.3e}", result.residual_norm);
+            println!("converged: {}", result.converged);
+            if !result.converged {
+                return Err(format!("CC({rank}) did not converge").into());
             }
         }
         Command::Verify {

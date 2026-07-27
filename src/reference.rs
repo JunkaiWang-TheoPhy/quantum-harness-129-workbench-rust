@@ -10,6 +10,10 @@ pub struct Reference {
     pub system: String,
     pub fci_energy: f64,
     pub fcidump_sha256: String,
+    #[serde(default)]
+    pub ccsd_total_energy: Option<f64>,
+    #[serde(default)]
+    pub active_orbital_energies: Vec<f64>,
 }
 
 #[derive(Debug, Error)]

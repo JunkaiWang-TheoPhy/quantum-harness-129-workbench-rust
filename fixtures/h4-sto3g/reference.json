@@ -1,4 +1,10 @@
 {
+  "active_orbital_energies": [
+    -0.6233416630297229,
+    -0.3825441975097934,
+    0.29660004092305126,
+    0.8657553218724322
+  ],
   "basis": "sto-3g",
   "ccsd_converged": true,
   "ccsd_correlation_energy": -0.06783358333499326,
@@ -14,6 +20,8 @@
   "hf_converged": true,
   "hf_energy": -2.098545936998005,
   "nuclear_repulsion_energy": 2.29310124732,
+  "number_of_active_electrons": 4,
+  "number_of_active_molecular_orbitals": 4,
   "number_of_atomic_orbitals": 4,
   "number_of_electrons": 4,
   "number_of_molecular_orbitals": 4,

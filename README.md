@@ -57,6 +57,26 @@ The resulting energy is `-76.121174204141980` hartree with residual
 `5.044e-8`, matching both PySCF and the published `-76.121174` anchor. See
 [reports/level1-direct-fci.md](reports/level1-direct-fci.md).
 
+## Level 2 Status
+
+Level 2 arbitrary-order determinant CC(n) is complete:
+
+- runtime-configurable excitation rank;
+- generic normalized cluster substitutions on full-FCI vectors;
+- finite Taylor construction of `exp(T)|HF>`;
+- projected energy and residual equations;
+- orbital-denominator updates and DIIS;
+- CC(2) validation against PySCF CCSD;
+- full-rank CC validation against FCI.
+
+```bash
+cargo run --release -- cc \
+  fixtures/h2o-sto3g/FCIDUMP fixtures/h2o-sto3g/reference.json \
+  --rank 2 --residual-tolerance 1e-7
+```
+
+See [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md).
+
 ## Scope
 
 - Parse FCIDUMP files generated from PySCF.
@@ -89,6 +109,8 @@ The resulting energy is `-76.121174204141980` hartree with residual
   Rust-vs-PySCF numerical acceptance results.
 - [reports/level1-direct-fci.md](reports/level1-direct-fci.md) records the
   matrix-free Davidson water benchmarks.
+- [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md) records
+  arbitrary-order CC convergence and oracle comparisons.
 
 ## Upstream Registration
 

@@ -1,8 +1,13 @@
 pub mod active_space;
+pub mod amplitudes;
+pub mod cluster;
+pub mod coupled_cluster;
 pub mod davidson;
 pub mod dense_fci;
 pub mod determinant;
+pub mod diis;
 pub mod direct_fci;
+pub mod excitation;
 pub mod fcidump;
 pub mod hamiltonian;
 pub mod operator;
