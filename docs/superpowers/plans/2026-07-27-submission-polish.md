@@ -463,7 +463,7 @@ git add docs/superpowers/plans/2026-07-27-submission-polish.md
 git commit -m "Record submission polish completion"
 ```
 
-- [ ] **Step 3: Synchronize and push**
+- [x] **Step 3: Synchronize and push**
 
 ```bash
 git fetch origin
@@ -473,7 +473,7 @@ git push origin main
 
 Expected: no force push; local `HEAD` equals `origin/main`.
 
-- [ ] **Step 4: Wait for normal CI**
+- [x] **Step 4: Wait for normal CI**
 
 Use:
 
@@ -502,7 +502,7 @@ Expected: both `verify` and `minimum-rust` jobs succeed on the pushed commit.
 - Consumes: green final workbench commit, release notes, PR body source.
 - Produces: public tag/release, accurate repository/PR metadata, review request, and anonymous end-to-end proof.
 
-- [ ] **Step 1: Update repository metadata**
+- [x] **Step 1: Update repository metadata**
 
 Run:
 
@@ -514,7 +514,7 @@ gh repo edit JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust \
 
 Verify visibility remains public.
 
-- [ ] **Step 2: Create and push the immutable release**
+- [x] **Step 2: Create and push the immutable release**
 
 Require that `v0.1.0` does not already exist, then:
 
@@ -528,7 +528,7 @@ gh release create v0.1.0 \
   --verify-tag
 ```
 
-- [ ] **Step 3: Update upstream solution references**
+- [x] **Step 3: Update upstream solution references**
 
 In a clean temporary clone of `JunkaiWang-TheoPhy/quantum.harness`, check out
 `challenge/ed-wangtheophys-rust-workbench`. Replace the validated workbench
@@ -540,7 +540,7 @@ git commit -m "Link WangTheoPhys v0.1.0 release"
 git push origin challenge/ed-wangtheophys-rust-workbench
 ```
 
-- [ ] **Step 4: Replace PR #217's stale body**
+- [x] **Step 4: Replace PR #217's stale body**
 
 Run:
 
@@ -553,7 +553,7 @@ Then add one review-ready comment mentioning `@chenpeizhi`, the green CI run,
 the public `v0.1.0` release, and the two upstream solution files. Do not post
 duplicate comments.
 
-- [ ] **Step 5: Verify anonymous release reproduction**
+- [x] **Step 5: Verify anonymous release reproduction**
 
 Clone without credentials into a fresh temporary directory, check out
 `v0.1.0`, and run:
@@ -574,7 +574,7 @@ environment. Require:
 - both upstream solution files contain the tag and exact workbench commit;
 - repository description no longer says “Private workspace”.
 
-- [ ] **Step 6: Complete the external-state audit**
+- [x] **Step 6: Complete the external-state audit**
 
 Require every preceding Task 6 check to pass and record the immutable evidence
 in the final handoff: workbench commit, peeled tag commit, release URL, CI run
