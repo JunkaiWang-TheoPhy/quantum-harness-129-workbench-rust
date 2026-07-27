@@ -336,7 +336,8 @@ git commit -m "Add warm-started arbitrary-order CC series"
 - Produces CLI:
 
 ```text
-ed_workbench_rs cc-series FCIDUMP REFERENCE PUBLISHED_REFERENCE
+ed_workbench_rs cc-series FCIDUMP REFERENCE
+    --published-reference PUBLISHED_REFERENCE
     --max-rank 8
     --residual-tolerance 1e-6
     --max-iterations 100
@@ -345,13 +346,14 @@ ed_workbench_rs cc-series FCIDUMP REFERENCE PUBLISHED_REFERENCE
 - Produces one tab-separated result row per rank plus a final
   `published verification: PASS` line.
 
-- [ ] **Step 1: Add a failing small-fixture CLI test**
+- [x] **Step 1: Add a failing small-fixture CLI test**
 
-Use H4 with a small test-only published reference and require fields for rank,
-energy, method-minus-FCI, iterations, residual, elapsed seconds, convergence,
-and published match.
+Use H4 without a published reference and require fields for rank, energy,
+method-minus-FCI, iterations, residual, elapsed seconds, and convergence.
+Exercise the strict published-reference path separately on primary-system
+CC(1), which is inexpensive but validates all context checks.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 Run:
 
@@ -361,7 +363,7 @@ cargo test --test cc_series
 
 Expected: Clap rejects the unknown `cc-series` command.
 
-- [ ] **Step 3: Implement the command and validation**
+- [x] **Step 3: Implement the command and validation**
 
 Load the normal fixture reference and Hirata table, verify system settings,
 run `solve_cc_series`, calculate:
@@ -375,7 +377,7 @@ let matches = rounded_published_match(difference, published, table.printed_decim
 Fail the command if any rank does not converge or does not round to the
 published value.
 
-- [ ] **Step 4: Run CLI tests and existing CLI regressions**
+- [x] **Step 4: Run CLI tests and existing CLI regressions**
 
 Run:
 
@@ -386,7 +388,7 @@ cargo test --test level2
 cargo test --test level4
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main.rs tests/cc_series.rs
@@ -430,7 +432,7 @@ Run:
 /usr/bin/time -lp target/release/ed_workbench_rs cc-series \
   fixtures/h2o-631g-fc/FCIDUMP \
   fixtures/h2o-631g-fc/reference.json \
-  fixtures/h2o-631g-fc/hirata2000-table2.json \
+  --published-reference fixtures/h2o-631g-fc/hirata2000-table2.json \
   --max-rank 8 --residual-tolerance 1e-6 --max-iterations 100
 ```
 
@@ -596,7 +598,7 @@ target/release/ed_workbench_rs verify \
 target/release/ed_workbench_rs cc-series \
   fixtures/h2o-631g-fc/FCIDUMP \
   fixtures/h2o-631g-fc/reference.json \
-  fixtures/h2o-631g-fc/hirata2000-table2.json \
+  --published-reference fixtures/h2o-631g-fc/hirata2000-table2.json \
   --max-rank 8 --residual-tolerance 1e-6
 ```
 

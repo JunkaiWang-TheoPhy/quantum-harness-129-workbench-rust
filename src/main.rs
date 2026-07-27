@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use ed_workbench_rs::ao2mo::transform_to_mo;
-use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc};
+use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc, solve_cc_series};
 use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
@@ -17,6 +17,7 @@ use ed_workbench_rs::molecule::Molecule;
 use ed_workbench_rs::operator::LinearOperator;
 use ed_workbench_rs::optimizer::BfgsConfig;
 use ed_workbench_rs::problem::ElectronicProblem;
+use ed_workbench_rs::published_reference::{HirataTable2, SeriesKind, rounded_published_match};
 use ed_workbench_rs::reference::{Reference, sha256_hex};
 use ed_workbench_rs::rhf::{RhfConfig, solve_rhf};
 use ed_workbench_rs::truncated_ci::solve_ci;
@@ -53,6 +54,18 @@ enum Command {
         #[arg(long)]
         rank: usize,
         #[arg(long, default_value_t = 1e-8)]
+        residual_tolerance: f64,
+        #[arg(long, default_value_t = 100)]
+        max_iterations: usize,
+    },
+    CcSeries {
+        fcidump: PathBuf,
+        reference: PathBuf,
+        #[arg(long)]
+        published_reference: Option<PathBuf>,
+        #[arg(long, default_value_t = 8)]
+        max_rank: usize,
+        #[arg(long, default_value_t = 1e-6)]
         residual_tolerance: f64,
         #[arg(long, default_value_t = 100)]
         max_iterations: usize,
@@ -224,6 +237,100 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err(format!("CC({rank}) did not converge").into());
+            }
+        }
+        Command::CcSeries {
+            fcidump,
+            reference,
+            published_reference,
+            max_rank,
+            residual_tolerance,
+            max_iterations,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let reference = Reference::load(&reference)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let published = published_reference
+                .as_deref()
+                .map(HirataTable2::load)
+                .transpose()?;
+            if let Some(table) = &published {
+                validate_hirata_context(table, &reference, &operator)?;
+            }
+            let series = solve_cc_series(
+                &operator,
+                max_rank,
+                &reference.active_orbital_energies,
+                &CcConfig {
+                    residual_tolerance,
+                    energy_tolerance: residual_tolerance * 0.01,
+                    max_iterations,
+                    ..Default::default()
+                },
+            )?;
+
+            println!("system: {}", reference.system);
+            println!("energy unit: hartree");
+            println!(
+                "rank\tenergy_hartree\tmethod_minus_fci_hartree\titerations\tresidual\telapsed_seconds\tconverged\tpublished_difference\tpublished_error\tpublished_match"
+            );
+            let mut published_matches = true;
+            for entry in &series {
+                let difference = entry.result.energy - reference.fci_energy;
+                let iterations = entry.result.iterations.len();
+                if let Some(table) = &published {
+                    let expected = table
+                        .difference(SeriesKind::Cc, entry.rank)
+                        .ok_or_else(|| format!("Hirata Table 2 has no CC({}) value", entry.rank))?;
+                    let error = difference - expected;
+                    let matches =
+                        rounded_published_match(difference, expected, table.printed_decimals);
+                    published_matches &= matches;
+                    println!(
+                        "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t{:.6}\t{:.3e}\t{}",
+                        entry.rank,
+                        entry.result.energy,
+                        difference,
+                        iterations,
+                        entry.result.residual_norm,
+                        entry.elapsed.as_secs_f64(),
+                        entry.result.converged,
+                        expected,
+                        error,
+                        matches
+                    );
+                } else {
+                    println!(
+                        "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t-\t-\t-",
+                        entry.rank,
+                        entry.result.energy,
+                        difference,
+                        iterations,
+                        entry.result.residual_norm,
+                        entry.elapsed.as_secs_f64(),
+                        entry.result.converged
+                    );
+                }
+            }
+            let converged =
+                series.len() == max_rank && series.iter().all(|entry| entry.result.converged);
+            println!("series converged: {converged}");
+            if published.is_some() {
+                println!(
+                    "published verification: {}",
+                    if published_matches && converged {
+                        "PASS"
+                    } else {
+                        "FAIL"
+                    }
+                );
+            }
+            if !converged {
+                return Err(format!("CC series stopped before converged CC({max_rank})").into());
+            }
+            if !published_matches {
+                return Err("CC series does not match Hirata 2000 Table 2".into());
             }
         }
         Command::Ci {
@@ -409,6 +516,42 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
             println!("verification: PASS");
         }
+    }
+    Ok(())
+}
+
+fn validate_hirata_context(
+    table: &HirataTable2,
+    reference: &Reference,
+    operator: &DirectFciOperator,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let problem = operator.problem();
+    let basis_matches = reference
+        .basis
+        .as_deref()
+        .is_some_and(|basis| basis.eq_ignore_ascii_case(&table.system.basis));
+    let coordinate_unit_matches = reference
+        .coordinate_unit
+        .as_deref()
+        .is_some_and(|unit| unit.eq_ignore_ascii_case("angstrom"));
+    let context_matches = basis_matches
+        && coordinate_unit_matches
+        && reference.frozen_orbitals == table.system.frozen_orbitals
+        && reference.number_of_active_molecular_orbitals
+            == Some(table.system.active_spatial_orbitals)
+        && reference.number_of_active_electrons == Some(table.system.active_electrons)
+        && problem.norb == table.system.active_spatial_orbitals
+        && problem.nelec == table.system.active_electrons
+        && operator.dimension() == table.system.determinants
+        && rounded_published_match(
+            reference.fci_energy,
+            table.system.fci_energy_printed,
+            table.printed_decimals,
+        );
+    if !context_matches {
+        return Err(
+            "fixture settings do not match Hirata 2000 Table 2 equilibrium H2O/6-31G".into(),
+        );
     }
     Ok(())
 }

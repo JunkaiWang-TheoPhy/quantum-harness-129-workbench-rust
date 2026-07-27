@@ -11,6 +11,16 @@ pub struct Reference {
     pub fci_energy: f64,
     pub fcidump_sha256: String,
     #[serde(default)]
+    pub basis: Option<String>,
+    #[serde(default)]
+    pub coordinate_unit: Option<String>,
+    #[serde(default)]
+    pub frozen_orbitals: Vec<usize>,
+    #[serde(default)]
+    pub number_of_active_electrons: Option<usize>,
+    #[serde(default)]
+    pub number_of_active_molecular_orbitals: Option<usize>,
+    #[serde(default)]
     pub ccsd_total_energy: Option<f64>,
     #[serde(default)]
     pub mp2_total_energy: Option<f64>,
