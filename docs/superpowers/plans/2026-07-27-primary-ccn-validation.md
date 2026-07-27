@@ -146,7 +146,7 @@ git commit -m "Add Hirata Table 2 reference data"
 - Produces: `ClusterExpansionPlan::exponential_on_reference(amplitudes) -> Result<Vec<f64>, ClusterError>`.
 - Preserves: `ClusterOperator::apply`, `apply_adjoint`, and the Taylor implementation used by UCC.
 
-- [ ] **Step 1: Add a failing recurrence-vs-Taylor test**
+- [x] **Step 1: Add a failing recurrence-vs-Taylor test**
 
 For H2 and H4, construct deterministic nonzero amplitude vectors at every
 rank, compare every wavefunction coefficient, and require maximum error below
@@ -168,13 +168,13 @@ for max_rank in 1..=basis.nalpha + basis.nbeta {
 }
 ```
 
-- [ ] **Step 2: Add a failing exhaustive sign-factorization test**
+- [x] **Step 2: Add a failing exhaustive sign-factorization test**
 
 On all determinant targets for spaces through four spatial orbitals, compare
 each alpha/beta partition's factored phase with
 `Excitation::apply(source).1`.
 
-- [ ] **Step 3: Run the focused tests and verify failure**
+- [x] **Step 3: Run the focused tests and verify failure**
 
 Run:
 
@@ -184,7 +184,7 @@ cargo test cluster::tests -- --nocapture
 
 Expected: compile failure because `ClusterExpansionPlan` is absent.
 
-- [ ] **Step 4: Implement spin subset partitions**
+- [x] **Step 4: Implement spin subset partitions**
 
 Add the private representation:
 
@@ -203,7 +203,7 @@ holes and virtual particles. Store the amplitude string address, complementary
 source string address, excitation rank, and phase normalized against the
 reference action.
 
-- [ ] **Step 5: Implement the ranked recurrence plan**
+- [x] **Step 5: Implement the ranked recurrence plan**
 
 Add:
 
@@ -230,7 +230,7 @@ wavefunction[target] += amplitude_rank as f64
 wavefunction[target] /= target_rank as f64;
 ```
 
-- [ ] **Step 6: Run correctness and regression tests**
+- [x] **Step 6: Run correctness and regression tests**
 
 Run:
 
@@ -243,7 +243,7 @@ cargo test --test level2
 Expected: recurrence matches Taylor below `1e-12`; all existing CC results
 remain within their current tolerances.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/cluster.rs
