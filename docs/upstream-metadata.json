@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-07-27",
+  "workspace": {
+    "local_path": "/Users/thomasjwang/Documents/GitHub/quantum-harness-129-ed-workbench-rust",
+    "repository": "JunkaiWang-TheoPhy/quantum-harness-129-ed-workbench-rust",
+    "url": "https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-ed-workbench-rust",
+    "visibility": "private",
+    "license": "AGPL-3.0"
+  },
+  "quantum_harness": {
+    "repository": "QuantumBFS/quantum.harness",
+    "url": "https://github.com/QuantumBFS/quantum.harness",
+    "challenge_issue": {
+      "number": 129,
+      "title": "[challenge]: Exact diagonalization workbench in Rust for electronic structure method development",
+      "url": "https://github.com/QuantumBFS/quantum.harness/issues/129",
+      "state": "OPEN",
+      "labels": ["challenge", "accepted"],
+      "released_by": "Guo CHEN",
+      "contact": "guochen@hkust-gz.edu.cn",
+      "method": "Exact Diagonalization",
+      "track": "ed"
+    },
+    "registration_pr": {
+      "number": 210,
+      "title": "[ed] WangTheoPhys: Rust ED/FCI workbench for electronic-structure methods",
+      "url": "https://github.com/QuantumBFS/quantum.harness/pull/210",
+      "state": "OPEN",
+      "base": "main",
+      "head": "JunkaiWang-TheoPhy:challenge/ed-wangtheophys-rust-workbench"
+    }
+  },
+  "team": {
+    "name": "WangTheoPhys",
+    "members": ["Junkai Wang <WangTheoPhys@outlook.com>"]
+  },
+  "reference_software": [
+    {
+      "name": "PySCF",
+      "url": "https://github.com/pyscf/pyscf",
+      "role": "Oracle generation and FCIDUMP export"
+    },
+    {
+      "name": "libcint",
+      "url": "https://github.com/sunqm/libcint",
+      "role": "Gaussian integral engine and Level 4 direct Rust integration target"
+    },
+    {
+      "name": "Psi4NumPy",
+      "url": "https://github.com/psi4/psi4numpy",
+      "role": "Readable quantum chemistry reference implementations"
+    },
+    {
+      "name": "tenferro-rs",
+      "url": "https://github.com/tensor4all/tenferro-rs",
+      "role": "Rust tensor/autodiff stack to evaluate and report gaps against"
+    }
+  ]
+}
