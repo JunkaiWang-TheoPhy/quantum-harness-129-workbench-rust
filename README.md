@@ -1,24 +1,65 @@
-# ED Workbench RS
+# Rewrite It In Rust! — Electronic Structure All the Way to CC(8)
 
 [![CI](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.1.0)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
-Public AGPL-3.0 workbench for Quantum Harness challenge
-[#129](https://github.com/QuantumBFS/quantum.harness/issues/129):
-**Exact diagonalization workbench in Rust for electronic structure method
-development**.
+**245,025 determinants. Direct Davidson FCI. Arbitrary-order CC. Direct
+integrals. One Rust workbench. RIIR!**
 
-The goal is to build a Rust reference implementation for determinant-based
-FCI/ED machinery, with arbitrary-order coupled cluster as the mandatory
-showcase.
+[Quantum Harness challenge #129](https://github.com/QuantumBFS/quantum.harness/issues/129)
+asked for an exact-diagonalization workbench in Rust for electronic-structure
+method development, with determinant-based arbitrary-order coupled cluster as
+the mandatory showcase.
 
-## Challenge Status
+We did not stop at parsing FCIDUMP. We did not stop at a toy Hamiltonian. We
+did not stop at CCSD.
+
+We took the full frozen-core H2O/6-31G problem from determinants to
+**CC(8)**—then kept climbing through CI, MBPT, direct `libcint` integrals,
+RHF, and FCI.
+
+**Rewrite it. Verify it. Push it to the FCI limit.**
+
+## The Scoreboard
+
+| Target | Result |
+|---|---|
+| Full H2O/6-31G frozen-core space | **245,025 determinants** |
+| Direct Davidson FCI | `-76.121174204141980 E_h` |
+| Hirata 2000 CC table | **CC(1)-CC(8): 8/8 entries matched** |
+| Hirata 2000 CI and MBPT tables | **28/28 entries matched** |
+| CC(8) distance from FCI | `7.998e-9 E_h` |
+| CI(8) distance from FCI | `2.004e-12 E_h` |
+| Direct-integral production path | **libcint → RHF → AO-to-MO → FCI, no Python runtime** |
+
+All published comparisons above match the precision printed by the paper.
+Every headline result is backed by committed fixtures, machine-readable
+evidence, reproduction commands, and a dedicated report.
+
+## This Is Not a Wrapper
+
+The production algorithms run in Rust:
+
+- FCIDUMP parsing, symmetry handling, and integral storage;
+- alpha/beta determinant enumeration and fermionic signs;
+- dense tiny-system Hamiltonians used as independent internal oracles;
+- matrix-free spin-free sigma contraction;
+- Davidson diagonalization with preconditioning and restart;
+- determinant-based CI(n), CC(n), MBPT(n), and unitary CC(n);
+- exact excitation-rank subset convolution for `exp(T)|HF>`;
+- direct `libcint` AO integrals, Rust RHF, DIIS, and AO-to-MO transformation.
+
+PySCF is the independent oracle and fixture generator. It is used to challenge
+the Rust implementation with known answers—not to execute the checked
+production path.
+
+## The Mission Is Complete
 
 The mandatory #129 path is complete on the primary H2O/6-31G frozen-core
-Hamiltonian. The earlier all-amplitude CC exponential bottleneck was replaced
-by an exact excitation-rank subset-convolution recurrence, with the original
-Taylor expansion retained as an independent small-system oracle.
+Hamiltonian. The original all-amplitude CC exponential bottleneck was
+replaced by an exact excitation-rank subset-convolution recurrence, while the
+finite Taylor expansion remains as an independent small-system oracle.
 
 - Direct Davidson FCI converges in the full 245,025-determinant space.
 - CC(1)-CC(8) matches all eight equilibrium CC entries in Hirata 2000
@@ -29,14 +70,41 @@ Taylor expansion retained as an independent small-system oracle.
   list, machine-readable evidence, and upstream reproduction materials are
   committed.
 
-The Kállay 2001 DZ/DZP calculations remain explicitly identified as extended
-targets; no primary 6-31G result is presented as evidence for those different
-Hamiltonians.
+One boundary stays deliberately explicit: the Kállay 2001 DZ/DZP
+calculations are extended targets. No primary 6-31G result is presented as
+evidence for those different Hamiltonians. RIIR means rewriting the
+implementation—not rewriting the scientific claim.
 
-## Level 0 Status
+## Quick Start
 
-Level 0 is complete for equilibrium and stretched H2 plus linear H4/STO-3G
-tiny-system fixtures:
+Build and test the Rust workbench:
+
+```bash
+cargo build --release
+cargo test --locked
+```
+
+Reproduce the headline FCI result:
+
+```bash
+cargo run --release -- davidson fixtures/h2o-631g-fc/FCIDUMP \
+  --residual-tolerance 1e-7 --max-iterations 60 --max-subspace 20
+```
+
+Run every normal submission gate:
+
+```bash
+scripts/verify-submission.sh
+```
+
+## The Climb
+
+### Level 0 — Make the Tiny Systems Tell the Truth
+
+Before attacking 245,025 determinants, make every sign, index, and integral
+convention prove itself on systems small enough to diagonalize explicitly.
+
+Level 0 is complete for equilibrium and stretched H2 plus linear H4/STO-3G:
 
 - PySCF-generated RHF, FCI, CCSD, FCIDUMP, and provenance/checksum artifacts;
 - Rust FCIDUMP parsing with Mulliken symmetry and Fortran exponent support;
@@ -62,9 +130,13 @@ uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
 .venv/bin/python scripts/oracle/generate.py
 ```
 
-See [reports/level0-accuracy.md](reports/level0-accuracy.md) for exact results.
+The exact comparisons live in
+[reports/level0-accuracy.md](reports/level0-accuracy.md).
 
-## Level 1 Status
+### Level 1 — Stop Building the Matrix
+
+Dense FCI established the truth. Matrix-free FCI made the real target
+possible.
 
 Level 1 direct FCI is complete:
 
@@ -84,7 +156,9 @@ The resulting energy is `-76.121174204141980` hartree with residual
 `5.044e-8`, matching both PySCF and the published `-76.121174` anchor. See
 [reports/level1-direct-fci.md](reports/level1-direct-fci.md).
 
-## Level 2 Status
+### Level 2 — Climb from CC(1) to CC(8)
+
+CCSD was a checkpoint, not the finish line.
 
 Level 2 arbitrary-order determinant CC(n) is complete:
 
@@ -111,7 +185,9 @@ CC(2) is within `3.025e-10` hartree of PySCF CCSD; CC(8) is within
 
 See [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md).
 
-## Level 3 Status
+### Level 3 — Keep Going: CI, MBPT, and UCC
+
+Once the determinant machinery is generic, one method family is not enough.
 
 All three Level 3 method families are implemented:
 
@@ -122,8 +198,7 @@ All three Level 3 method families are implemented:
 On the primary 245,025-determinant water target, every CI(1)-CI(8) and
 MBPT(1)-MBPT(20) difference matches Hirata 2000 Table 2 at its printed
 precision. CI(8) differs from FCI by `2.004e-12` hartree. H4 CI(4) and H2
-UCC(2) additionally reproduce their small-system FCI limits. See
-[reports/level3-methods.md](reports/level3-methods.md).
+UCC(2) additionally reproduce their small-system FCI limits.
 
 ```bash
 RAYON_NUM_THREADS=10 cargo run --release -- level3-series \
@@ -135,7 +210,11 @@ RAYON_NUM_THREADS=10 cargo run --release -- level3-series \
   --max-iterations 100 --max-subspace 24
 ```
 
-## Level 4 Status
+See [reports/level3-methods.md](reports/level3-methods.md).
+
+### Level 4 — Remove Python from the Production Path
+
+The final climb starts before FCIDUMP: at the molecular geometry itself.
 
 The direct-integral stack is complete for H2 and H2O/STO-3G:
 
@@ -179,7 +258,7 @@ already supplies dense tensors, strided views, gather/scatter, division,
 reductions, and contractions; the primary determinant-workload gap is
 collision-reducing scatter-add with explicit deterministic semantics.
 
-## Verification
+## Verification: Trust, but Recompute
 
 Install the pinned Python oracle environment once:
 
@@ -199,7 +278,7 @@ scripts/verify-submission.sh
 Set `PYTHON=python3` when the pinned oracle dependencies are installed in the
 active interpreter rather than `.venv`.
 
-## Scope
+## What Got Rewritten
 
 - Parse FCIDUMP files generated from PySCF.
 - Enumerate alpha/beta determinant strings.
@@ -210,57 +289,59 @@ active interpreter rather than `.venv`.
 - Compute direct libcint AO integrals, RHF, and AO-to-MO transformations.
 - Record Rust ecosystem and `tenferro-rs` gap notes discovered along the way.
 
-## Repository Map
+## Follow the Evidence
 
-- [docs/challenge-129-brief.md](docs/challenge-129-brief.md) records the upstream
-  challenge metadata, required targets, deliverables, and grading anchors.
-- [docs/implementation-roadmap.md](docs/implementation-roadmap.md) turns the
-  challenge into an implementation sequence for this Rust repository.
-- [docs/resources.md](docs/resources.md) indexes useful upstream GitHub and web
-  resources, including PySCF, libcint, Psi4NumPy, tenferro-rs, and the cited
-  literature.
-- [docs/web-and-github-snapshot.md](docs/web-and-github-snapshot.md) records a
-  dated, source-linked snapshot of the upstream issue, registration PR,
-  #129 dependency versions, and implementation documentation entry points.
-- [docs/reproducibility-notes.md](docs/reproducibility-notes.md) extracts the
-  implementation-sensitive conventions, APIs, targets, tolerances, and
-  provenance rules needed to reproduce the published calculations.
-- [docs/reproduction-prompt.md](docs/reproduction-prompt.md) is the standalone
-  submission prompt with exact revision, checksums, commands, tolerances,
-  expected tables, and failure-reporting requirements.
-- [docs/submission-pr-body.md](docs/submission-pr-body.md) is the
-  version-controlled source for the upstream solution PR description.
-- [docs/release-notes-v0.1.0.md](docs/release-notes-v0.1.0.md) records the
-  immutable inputs, headline values, verification commands, and scope of the
-  first public release.
-- [docs/sync-log.md](docs/sync-log.md) records what was pulled from GitHub and
-  how this public workbench relates to the Quantum Harness solution PR.
-- [docs/upstream-metadata.json](docs/upstream-metadata.json) is the
-  machine-readable counterpart of the dated snapshot.
-- [reports/level0-accuracy.md](reports/level0-accuracy.md) records the first
-  Rust-vs-PySCF numerical acceptance results.
-- [reports/level1-direct-fci.md](reports/level1-direct-fci.md) records the
-  matrix-free Davidson water benchmarks.
-- [reports/level2-cc-accuracy.md](reports/level2-cc-accuracy.md) records
-  arbitrary-order CC convergence and oracle comparisons.
-- [reports/level3-methods.md](reports/level3-methods.md) records CI(n),
-  MBPT(n), and unitary CC(n) results.
-- [reports/level4-integrals.md](reports/level4-integrals.md) records the
-  Python-free direct-integral pipeline and element-level PySCF comparisons.
-- [reports/tenferro-gap-list.md](reports/tenferro-gap-list.md) maps every
-  #129 tensor requirement to the current tenferro-rs 0.2.0 API and proposes
-  upstreamable reproducer work.
+- [Challenge brief](docs/challenge-129-brief.md) — upstream targets,
+  deliverables, and grading anchors.
+- [Implementation roadmap](docs/implementation-roadmap.md) — the full build
+  sequence for this Rust repository.
+- [Resources](docs/resources.md) — PySCF, libcint, Psi4NumPy, tenferro-rs,
+  papers, and implementation references.
+- [Web and GitHub snapshot](docs/web-and-github-snapshot.md) — dated upstream
+  issue, PR, dependency, and documentation metadata.
+- [Reproducibility notes](docs/reproducibility-notes.md) — conventions, APIs,
+  targets, tolerances, and provenance rules.
+- [Standalone reproduction prompt](docs/reproduction-prompt.md) — exact
+  revision, checksums, commands, tolerances, expected tables, and failure
+  reporting.
+- [Submission PR body](docs/submission-pr-body.md) — version-controlled source
+  for the upstream solution PR description.
+- [v0.1.0 release notes](docs/release-notes-v0.1.0.md) — immutable inputs,
+  headline values, verification commands, and release scope.
+- [Sync log](docs/sync-log.md) — relationship between this workbench and the
+  Quantum Harness solution PR.
+- [Machine-readable upstream metadata](docs/upstream-metadata.json) — dated
+  challenge and registration data.
+- [Level 0 report](reports/level0-accuracy.md) — Rust-versus-PySCF tiny-system
+  acceptance.
+- [Level 1 report](reports/level1-direct-fci.md) — matrix-free Davidson water
+  benchmarks.
+- [Level 2 report](reports/level2-cc-accuracy.md) — arbitrary-order CC
+  convergence and oracle comparisons.
+- [Level 3 report](reports/level3-methods.md) — CI(n), MBPT(n), and unitary
+  CC(n).
+- [Level 4 report](reports/level4-integrals.md) — Python-free direct-integral
+  pipeline and element-level PySCF comparisons.
+- [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
+  proposed upstreamable reproducer work.
 
-## Upstream Registration
+## Upstream Challenge
 
 - Challenge issue: https://github.com/QuantumBFS/quantum.harness/issues/129
 - Active solution PR: https://github.com/QuantumBFS/quantum.harness/pull/217
 - Superseded registration PR: https://github.com/QuantumBFS/quantum.harness/pull/210
 - Track folder: `tracks/ed/solutions/WangTheoPhys/`
-- Registered team: Rewrite It In Rust! (RIIR 2607 Hefei)
+- Registered team: **Rewrite It In Rust! (RIIR 2607 Hefei)**
 - Members: Chenxi Wan, Yedi Shen, Junkai Wang
-- Solution directory identifier: WangTheoPhys
+- Solution directory identifier: `WangTheoPhys`
 
 ## License
 
-This repository is licensed under the GNU Affero General Public License v3.0.
+GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+
+---
+
+**From FCIDUMP to FCI. From CC(1) to CC(8). From Python oracle to a Rust
+production path.**
+
+## Rewrite It In Rust!
