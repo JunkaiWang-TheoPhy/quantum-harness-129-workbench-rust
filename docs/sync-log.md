@@ -48,3 +48,14 @@ Second-pass web and GitHub sync:
 - Added `docs/web-and-github-snapshot.md` and
   `docs/reproducibility-notes.md`.
 - Expanded `docs/upstream-metadata.json` with source timestamps and states.
+
+Completed the Level 0 tiny-system oracle loop:
+
+- Added a pinned PySCF 2.14.0 generator under `scripts/oracle/`.
+- Committed deterministic H2 and linear H4/STO-3G FCIDUMP/reference fixtures.
+- Added Rust FCIDUMP, determinant, dense Hamiltonian, eigensolver, reference,
+  and CLI modules.
+- Verified Rust dense FCI against PySCF to `0.0` hartree for H2 and
+  `6.217e-15` hartree for H4.
+- Added checksum verification, CLI regression tests, and
+  `reports/level0-accuracy.md`.

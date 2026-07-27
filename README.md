@@ -9,6 +9,34 @@ The goal is to build a Rust reference implementation for determinant-based
 FCI/ED machinery, with arbitrary-order coupled cluster as the mandatory
 showcase.
 
+## Level 0 Status
+
+Level 0 is complete for the H2 and linear H4/STO-3G tiny-system fixtures:
+
+- PySCF-generated RHF, FCI, CCSD, FCIDUMP, and provenance/checksum artifacts;
+- Rust FCIDUMP parsing with Mulliken symmetry and Fortran exponent support;
+- Rust alpha/beta determinant enumeration and fermionic operator signs;
+- Rust explicit dense Hamiltonian construction and symmetric diagonalization;
+- automatic `1e-10`-hartree verification against PySCF FCI.
+
+Run the committed fixtures without Python:
+
+```bash
+cargo run -- inspect fixtures/h2-sto3g/FCIDUMP
+cargo run -- verify fixtures/h2-sto3g/FCIDUMP fixtures/h2-sto3g/reference.json
+cargo run -- verify fixtures/h4-sto3g/FCIDUMP fixtures/h4-sto3g/reference.json
+```
+
+Regenerate the independent oracle only when needed:
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
+.venv/bin/python scripts/oracle/generate.py
+```
+
+See [reports/level0-accuracy.md](reports/level0-accuracy.md) for exact results.
+
 ## Scope
 
 - Parse FCIDUMP files generated from PySCF.
@@ -37,6 +65,8 @@ showcase.
   how this private repo relates to the public Quantum Harness registration PR.
 - [docs/upstream-metadata.json](docs/upstream-metadata.json) is the
   machine-readable counterpart of the dated snapshot.
+- [reports/level0-accuracy.md](reports/level0-accuracy.md) records the first
+  Rust-vs-PySCF numerical acceptance results.
 
 ## Upstream Registration
 
