@@ -379,7 +379,7 @@ git commit -m "Document and package the Rust workbench"
 - Consumes: final numerical reports, public repository URL, solution PR URL, and reproduction prompt.
 - Produces: version-controlled source text for GitHub PR metadata and the `v0.1.0` release.
 
-- [ ] **Step 1: Add the PR body source**
+- [x] **Step 1: Add the PR body source**
 
 Write `docs/submission-pr-body.md` with:
 
@@ -394,7 +394,7 @@ Write `docs/submission-pr-body.md` with:
 - reviewer checklist for design README, reproduction prompt, CI, and numerical
   evidence.
 
-- [ ] **Step 2: Add release notes**
+- [x] **Step 2: Add release notes**
 
 Write `docs/release-notes-v0.1.0.md` with:
 
@@ -406,13 +406,13 @@ Write `docs/release-notes-v0.1.0.md` with:
 - known scope boundary;
 - links to detailed reports and upstream PR #217.
 
-- [ ] **Step 3: Link release notes from the README map**
+- [x] **Step 3: Link release notes from the README map**
 
 Add both new documents to `Repository Map`, describing one as the source for
 the upstream PR description and the other as the immutable `v0.1.0` release
 record.
 
-- [ ] **Step 4: Validate copy against machine data**
+- [x] **Step 4: Validate copy against machine data**
 
 Run searches that require all exact anchors:
 
@@ -425,7 +425,7 @@ rg -q 'MBPT\\(1\\).*MBPT\\(20\\)' docs/submission-pr-body.md docs/release-notes-
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/submission-pr-body.md docs/release-notes-v0.1.0.md README.md

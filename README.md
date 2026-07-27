@@ -228,6 +228,11 @@ active interpreter rather than `.venv`.
 - [docs/reproduction-prompt.md](docs/reproduction-prompt.md) is the standalone
   submission prompt with exact revision, checksums, commands, tolerances,
   expected tables, and failure-reporting requirements.
+- [docs/submission-pr-body.md](docs/submission-pr-body.md) is the
+  version-controlled source for the upstream solution PR description.
+- [docs/release-notes-v0.1.0.md](docs/release-notes-v0.1.0.md) records the
+  immutable inputs, headline values, verification commands, and scope of the
+  first public release.
 - [docs/sync-log.md](docs/sync-log.md) records what was pulled from GitHub and
   how this public workbench relates to the Quantum Harness solution PR.
 - [docs/upstream-metadata.json](docs/upstream-metadata.json) is the
