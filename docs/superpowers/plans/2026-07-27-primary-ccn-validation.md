@@ -480,13 +480,13 @@ git commit -m "Validate water CC series against Hirata Table 2"
 - Consumes: existing `solve_ci` and `solve_mbpt`.
 - Produces: primary H2O CI(1)-CI(8) and MBPT(1)-MBPT(20) result records.
 
-- [ ] **Step 1: Add published-comparison helpers to CI and MBPT output**
+- [x] **Step 1: Add published-comparison helpers to CI and MBPT output**
 
 Add a `published-series` CLI command or a shared internal runner that evaluates
 the requested series and emits method-minus-FCI differences with the same
 precision-aware acceptance used by CC.
 
-- [ ] **Step 2: Run MBPT(1)-MBPT(20)**
+- [x] **Step 2: Run MBPT(1)-MBPT(20)**
 
 Run:
 
@@ -499,19 +499,19 @@ target/release/ed_workbench_rs mbpt \
 
 Compare every partial-sum difference with the equilibrium MBPT column.
 
-- [ ] **Step 3: Run CI(1)-CI(8)**
+- [x] **Step 3: Run CI(1)-CI(8)**
 
 Run each rank with a residual tolerance no looser than `1e-7`; reuse the
 already validated full-rank Davidson result for CI(8) if the implementation
 identifies the spaces as identical.
 
-- [ ] **Step 4: Commit result data and regression tests**
+- [x] **Step 4: Commit result data and regression tests**
 
 The test loads `level3_series_results.json`, requires all orders, verifies the
 CI variational sequence, residual tolerances, and all six-decimal published
 matches.
 
-- [ ] **Step 5: Update the Level 3 report and commit**
+- [x] **Step 5: Update the Level 3 report and commit**
 
 ```bash
 git add src/main.rs fixtures/h2o-631g-fc/level3_series_results.json tests/level3_primary.rs reports/level3-methods.md

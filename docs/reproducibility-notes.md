@@ -102,6 +102,27 @@ Tests should cover these facts explicitly:
 - Use residual norm `< 1e-6` as the published baseline convergence criterion;
   tighter internal tests are encouraged.
 
+## CI(n) and MBPT(n) Published Checks
+
+- Use the same H2O/6-31G frozen-core FCIDUMP, FCI reference energy, geometry,
+  active space, and unit contract as CC(n).
+- CI(n) is the variational diagonalization in the determinant space containing
+  excitations through rank `n`. Warm-start each Davidson solve from the
+  preceding rank, require residual norm at most `1e-7`, and verify that the
+  energy is non-increasing through CI(8).
+- CI(8) spans all 245,025 determinants and is therefore an independent
+  full-space check of the Level 1 direct-FCI result.
+- MBPT(n) uses the canonical RHF Fock diagonal as `H0` and records both each
+  correction and every partial sum through order 20.
+- Compare `E(method)-E(FCI)` with the equilibrium CI and MBPT columns of Hirata
+  2000 Table 2. The paper prints six decimal places, so compare rounded
+  microhartree integers rather than claiming unavailable paper precision.
+- The complete committed records are
+  `fixtures/h2o-631g-fc/cc_series_results.json` and
+  `fixtures/h2o-631g-fc/level3_series_results.json`; their regression tests
+  check the settings, order coverage, convergence, arithmetic, and all
+  published matches.
+
 ## tenferro-rs Evaluation
 
 The dense GEMM-like integral-contraction block may fit tenferro. The
