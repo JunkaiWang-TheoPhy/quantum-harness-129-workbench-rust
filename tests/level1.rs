@@ -50,6 +50,11 @@ fn h2_davidson_matches_pyscf() {
 }
 
 #[test]
+fn equilibrium_h2_davidson_matches_pyscf() {
+    davidson_fixture("h2-equilibrium-sto3g", 1e-11);
+}
+
+#[test]
 fn h4_davidson_matches_pyscf() {
     davidson_fixture("h4-sto3g", 1e-10);
 }

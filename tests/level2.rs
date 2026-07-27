@@ -47,6 +47,11 @@ fn h2_cc2_matches_fci_and_ccsd() {
 }
 
 #[test]
+fn equilibrium_h2_cc2_matches_fci_and_ccsd() {
+    cc_fixture("h2-equilibrium-sto3g", 2, 1e-9);
+}
+
+#[test]
 fn h4_cc2_matches_pyscf_ccsd() {
     cc_fixture("h4-sto3g", 2, 1e-8);
 }
