@@ -34,6 +34,11 @@ SYSTEMS = {
         name="H2",
         atom="H 0 0 -0.7; H 0 0 0.7",
     ),
+    "h2-equilibrium-sto3g": System(
+        slug="h2-equilibrium-sto3g",
+        name="H2 equilibrium",
+        atom="H 0 0 -0.3707; H 0 0 0.3707",
+    ),
     "h4-sto3g": System(
         slug="h4-sto3g",
         name="linear H4",

@@ -26,6 +26,11 @@ fn h2_matches_pyscf_fci() {
 }
 
 #[test]
+fn equilibrium_h2_matches_pyscf_fci() {
+    verify_fixture("h2-equilibrium-sto3g");
+}
+
+#[test]
 fn h4_matches_pyscf_fci() {
     verify_fixture("h4-sto3g");
 }

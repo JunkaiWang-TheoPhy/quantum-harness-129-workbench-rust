@@ -11,7 +11,8 @@ showcase.
 
 ## Level 0 Status
 
-Level 0 is complete for the H2 and linear H4/STO-3G tiny-system fixtures:
+Level 0 is complete for equilibrium and stretched H2 plus linear H4/STO-3G
+tiny-system fixtures:
 
 - PySCF-generated RHF, FCI, CCSD, FCIDUMP, and provenance/checksum artifacts;
 - Rust FCIDUMP parsing with Mulliken symmetry and Fortran exponent support;
@@ -23,6 +24,8 @@ Run the committed fixtures without Python:
 
 ```bash
 cargo run -- inspect fixtures/h2-sto3g/FCIDUMP
+cargo run -- verify fixtures/h2-equilibrium-sto3g/FCIDUMP \
+  fixtures/h2-equilibrium-sto3g/reference.json
 cargo run -- verify fixtures/h2-sto3g/FCIDUMP fixtures/h2-sto3g/reference.json
 cargo run -- verify fixtures/h4-sto3g/FCIDUMP fixtures/h4-sto3g/reference.json
 ```
