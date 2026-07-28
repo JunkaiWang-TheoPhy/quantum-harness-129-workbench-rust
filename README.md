@@ -68,6 +68,43 @@ The established `freeze_core`, direct-FCI, Davidson, and CC commands remain
 compatible. The Hamiltonian and every committed published comparison are
 unchanged. See the [v0.2.0 release notes](docs/release-notes-v0.2.0.md).
 
+v0.3 adds a versioned local-NVMe Davidson workspace:
+
+- basis and sigma vectors no longer have to remain resident as a complete
+  subspace;
+- an interrupted calculation can resume from an atomically committed
+  checkpoint;
+- FCIDUMP fingerprints and numerical configuration prevent stale resumes;
+- truncated, non-finite, unsafe, or incompatible state is rejected;
+- a conservative solver-vector memory preflight runs before allocation.
+
+```bash
+cargo run --release --locked -- davidson \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  --workspace /path/to/workspace \
+  --checkpoint-every 1 \
+  --memory-budget-gib 2 \
+  --residual-tolerance 1e-7 \
+  --max-iterations 60 \
+  --max-subspace 20
+
+cargo run --release --locked -- davidson \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  --workspace /path/to/workspace \
+  --resume \
+  --checkpoint-every 1 \
+  --memory-budget-gib 2 \
+  --residual-tolerance 1e-7 \
+  --max-iterations 100 \
+  --max-subspace 20
+```
+
+Disk backing reduces Davidson subspace residency; it does not eliminate the
+requirement that several full vectors fit in memory. It is not a claim of
+converged H2O/cc-pVDZ all-electron full FCI. See the
+[v0.3.0 release notes](docs/release-notes-v0.3.0.md) and
+[checkpoint format](docs/checkpoint-format.md).
+
 ## The Mission Is Complete
 
 The mandatory #129 path is complete on the primary H2O/6-31G frozen-core
@@ -353,6 +390,10 @@ active interpreter rather than `.venv`.
   for the upstream solution PR description.
 - [v0.2.0 release notes](docs/release-notes-v0.2.0.md) — active-space,
   combinadic, and CC diagnostic hardening.
+- [v0.3.0 release notes](docs/release-notes-v0.3.0.md) — restartable,
+  disk-backed Davidson.
+- [Checkpoint format](docs/checkpoint-format.md) — schema, atomicity,
+  validation, and memory planning.
 - [v0.1.0 release notes](docs/release-notes-v0.1.0.md) — immutable inputs,
   headline values, verification commands, and release scope.
 - [Sync log](docs/sync-log.md) — relationship between this workbench and the

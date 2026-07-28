@@ -87,4 +87,27 @@ jq -e '
   ([.results[].converged] | all)
 ' "$verification_tmp/h4-cc-series.json" >/dev/null
 
+if cargo run --quiet --locked -- davidson \
+  fixtures/h4-sto3g/FCIDUMP \
+  --max-iterations 1 \
+  --workspace "$verification_tmp/davidson" >/dev/null 2>&1; then
+  printf 'one-iteration H4 Davidson unexpectedly converged\n' >&2
+  exit 1
+fi
+jq -e '
+  .schema_version == 1 and
+  .dimension == 36 and
+  .completed_iterations == 1 and
+  .basis_count == .sigma_count and
+  .basis_count > 0 and
+  .scalar_type == "f64" and
+  .byte_order == "little" and
+  .last_converged == false
+' "$verification_tmp/davidson/checkpoint.json" >/dev/null
+cargo run --quiet --locked -- davidson \
+  fixtures/h4-sto3g/FCIDUMP \
+  --max-iterations 100 \
+  --workspace "$verification_tmp/davidson" \
+  --resume >/dev/null
+
 git diff --check

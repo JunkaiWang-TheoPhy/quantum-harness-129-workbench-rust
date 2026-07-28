@@ -9,7 +9,10 @@ use ed_workbench_rs::benchmark::{
     BoundedBenchmarkConfig, BoundedBenchmarkResult, run_h2o_cc_pvdz_benchmark,
 };
 use ed_workbench_rs::coupled_cluster::{CcConfig, CcTermination, solve_cc, solve_cc_series};
-use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
+use ed_workbench_rs::davidson::{
+    DavidsonConfig, DavidsonRunConfig, DavidsonWorkspaceConfig, lowest_eigenpair,
+    lowest_eigenpair_with_run_config,
+};
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
 use ed_workbench_rs::direct_fci::DirectFciOperator;
@@ -51,6 +54,20 @@ enum Command {
         max_iterations: usize,
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
+        #[arg(long)]
+        workspace: Option<PathBuf>,
+        #[arg(long, requires = "workspace")]
+        resume: bool,
+        #[arg(long, default_value_t = 1, requires = "workspace")]
+        checkpoint_every: usize,
+        #[arg(
+            long,
+            default_value_t = 2.0,
+            help = "conservative Davidson-vector budget in GiB; not an operating-system hard limit"
+        )]
+        memory_budget_gib: f64,
+        #[arg(long, requires = "workspace")]
+        operator_fingerprint: Option<String>,
     },
     Cc {
         fcidump: PathBuf,
@@ -241,6 +258,11 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             residual_tolerance,
             max_iterations,
             max_subspace,
+            workspace,
+            resume,
+            checkpoint_every,
+            memory_budget_gib,
+            operator_fingerprint,
         } => {
             let bytes = fs::read(&fcidump)?;
             let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
@@ -255,19 +277,49 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .map(|(index, _)| index)
                 .ok_or("empty determinant basis")?;
             initial[reference_index] = 1.0;
-            let result = lowest_eigenpair(
-                &operator,
-                &initial,
-                &DavidsonConfig {
-                    residual_tolerance,
-                    energy_tolerance: residual_tolerance * 0.01,
-                    max_iterations,
-                    max_subspace,
-                },
-            )?;
+            let algorithm = DavidsonConfig {
+                residual_tolerance,
+                energy_tolerance: residual_tolerance * 0.01,
+                max_iterations,
+                max_subspace,
+            };
+            let estimated_bytes =
+                davidson_resident_bytes(operator.dimension(), max_subspace, workspace.is_some())?;
+            let budget_bytes = gib_to_bytes(memory_budget_gib)?;
+            if estimated_bytes > budget_bytes {
+                return Err(format!(
+                    "conservative Davidson vector estimate {:.6} GiB exceeds budget {:.6} GiB",
+                    estimated_bytes as f64 / GIB,
+                    budget_bytes as f64 / GIB
+                )
+                .into());
+            }
+            let run_config = DavidsonRunConfig {
+                algorithm,
+                workspace: workspace.map(|path| DavidsonWorkspaceConfig {
+                    path,
+                    resume,
+                    checkpoint_every,
+                    operator_fingerprint: operator_fingerprint
+                        .unwrap_or_else(|| sha256_hex(&bytes)),
+                }),
+            };
+            let result = lowest_eigenpair_with_run_config(&operator, &initial, &run_config)?;
             println!("energy: {:.15}", result.energy);
             println!("residual norm: {:.3e}", result.residual_norm);
             println!("iterations: {}", result.iterations);
+            println!(
+                "storage: {}",
+                if run_config.workspace.is_some() {
+                    "disk workspace"
+                } else {
+                    "memory"
+                }
+            );
+            println!(
+                "conservative Davidson vectors: {:.6} GiB",
+                estimated_bytes as f64 / GIB
+            );
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err("Davidson did not converge".into());
@@ -805,7 +857,6 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_benchmark_result(result: &BoundedBenchmarkResult) {
-    const GIB: f64 = (1024_u64.pow(3)) as f64;
     println!("system: {}", result.system);
     println!("geometry: {}", result.geometry);
     println!("basis: {}", result.basis);
@@ -874,6 +925,39 @@ fn print_benchmark_result(result: &BoundedBenchmarkResult) {
     );
     println!("Rayon threads: {}", result.rayon_threads);
     println!("full FCI executed: {}", result.full_fci_executed);
+}
+
+const GIB: f64 = (1024_u64.pow(3)) as f64;
+
+fn gib_to_bytes(gib: f64) -> Result<u64, Box<dyn std::error::Error>> {
+    if !gib.is_finite() || gib <= 0.0 {
+        return Err("memory budget must be finite and positive".into());
+    }
+    let bytes = gib * GIB;
+    if bytes > u64::MAX as f64 {
+        return Err("memory budget exceeds u64 byte range".into());
+    }
+    Ok(bytes.ceil() as u64)
+}
+
+fn davidson_resident_bytes(
+    dimension: usize,
+    max_subspace: usize,
+    disk_workspace: bool,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let resident_vectors = if disk_workspace {
+        7
+    } else {
+        max_subspace
+            .checked_mul(2)
+            .and_then(|value| value.checked_add(6))
+            .ok_or("Davidson resident-vector count overflow")?
+    };
+    let bytes = dimension
+        .checked_mul(resident_vectors)
+        .and_then(|value| value.checked_mul(size_of::<f64>()))
+        .ok_or("Davidson resident-byte estimate overflow")?;
+    Ok(u64::try_from(bytes)?)
 }
 
 fn validate_hirata_context(

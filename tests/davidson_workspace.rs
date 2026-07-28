@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use ed_workbench_rs::davidson::{
     DavidsonConfig, DavidsonError, DavidsonRunConfig, DavidsonWorkspaceConfig, lowest_eigenpair,
@@ -210,4 +211,54 @@ fn fresh_run_refuses_a_nonempty_workspace() {
     assert!(workspace.join("unrelated.txt").is_file());
     clean_workspace(&workspace);
     assert!(matches!(error, DavidsonError::WorkspaceNotEmpty { .. }));
+}
+
+#[test]
+fn davidson_cli_documents_and_resumes_a_disk_workspace() {
+    let help = Command::new(env!("CARGO_BIN_EXE_ed_workbench_rs"))
+        .args(["davidson", "--help"])
+        .output()
+        .unwrap();
+    assert!(help.status.success());
+    let help = String::from_utf8_lossy(&help.stdout);
+    for option in [
+        "--workspace",
+        "--resume",
+        "--checkpoint-every",
+        "--memory-budget-gib",
+        "--operator-fingerprint",
+    ] {
+        assert!(help.contains(option), "missing {option} in {help}");
+    }
+
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h4-sto3g");
+    let workspace = workspace("cli");
+    clean_workspace(&workspace);
+    let interrupted = Command::new(env!("CARGO_BIN_EXE_ed_workbench_rs"))
+        .arg("davidson")
+        .arg(root.join("FCIDUMP"))
+        .args(["--max-iterations", "1", "--workspace"])
+        .arg(&workspace)
+        .output()
+        .unwrap();
+    assert!(!interrupted.status.success());
+    assert!(workspace.join("checkpoint.json").is_file());
+
+    let resumed = Command::new(env!("CARGO_BIN_EXE_ed_workbench_rs"))
+        .arg("davidson")
+        .arg(root.join("FCIDUMP"))
+        .args(["--max-iterations", "100", "--workspace"])
+        .arg(&workspace)
+        .arg("--resume")
+        .output()
+        .unwrap();
+    clean_workspace(&workspace);
+    assert!(
+        resumed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&resumed.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&resumed.stdout);
+    assert!(stdout.contains("storage: disk workspace"));
+    assert!(stdout.contains("converged: true"));
 }
