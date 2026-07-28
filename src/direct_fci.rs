@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::determinant::DeterminantBasis;
@@ -19,6 +22,7 @@ pub struct DirectFciKernel {
 pub struct DirectFciOperator {
     kernel: DirectFciKernel,
     diagonal: Vec<f64>,
+    execution: ExecutionPlan,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,12 +32,60 @@ pub struct SparseColumn {
     pub raw_contributions: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecutionMode {
+    Serial,
+    Parallel,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExecutionPolicy {
+    Serial,
+    Parallel {
+        blocks: usize,
+        memory_budget_bytes: u64,
+        allow_serial_fallback: bool,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionReport {
+    pub requested_mode: ExecutionMode,
+    pub effective_mode: ExecutionMode,
+    pub effective_blocks: usize,
+    pub rayon_threads: usize,
+    pub workspace_bytes: u64,
+    pub fallback_reason: Option<String>,
+    pub elapsed_seconds: f64,
+}
+
+#[derive(Debug, Clone)]
+struct ExecutionPlan {
+    requested_mode: ExecutionMode,
+    effective_mode: ExecutionMode,
+    effective_blocks: usize,
+    workspace_bytes: u64,
+    fallback_reason: Option<String>,
+}
+
 #[derive(Debug, Error)]
 pub enum DirectFciError {
     #[error("invalid electron/spin counts")]
     InvalidSpin,
     #[error("source determinant index {index} is outside dimension {dimension}")]
     SourceOutOfRange { index: usize, dimension: usize },
+    #[error("parallel execution requires at least one source block")]
+    InvalidParallelBlocks,
+    #[error("parallel workspace byte estimate overflow")]
+    ParallelWorkspaceOverflow,
+    #[error(
+        "parallel workspace requires {required_bytes} bytes, which exceeds budget {budget_bytes} bytes"
+    )]
+    ParallelMemoryBudget {
+        required_bytes: u64,
+        budget_bytes: u64,
+    },
     #[error(transparent)]
     Strings(#[from] StringSpaceError),
 }
@@ -163,11 +215,174 @@ impl DirectFciOperator {
     pub fn new(problem: ElectronicProblem) -> Result<Self, DirectFciError> {
         let kernel = DirectFciKernel::new(problem)?;
         let diagonal = hamiltonian_diagonal(&kernel.problem, &kernel.alpha, &kernel.beta);
-        Ok(Self { kernel, diagonal })
+        Ok(Self {
+            kernel,
+            diagonal,
+            execution: ExecutionPlan {
+                requested_mode: ExecutionMode::Serial,
+                effective_mode: ExecutionMode::Serial,
+                effective_blocks: 1,
+                workspace_bytes: 0,
+                fallback_reason: None,
+            },
+        })
     }
 
     pub fn problem(&self) -> &ElectronicProblem {
         self.kernel.problem()
+    }
+
+    pub fn with_execution_policy(
+        mut self,
+        policy: ExecutionPolicy,
+    ) -> Result<Self, DirectFciError> {
+        self.execution = match policy {
+            ExecutionPolicy::Serial => ExecutionPlan {
+                requested_mode: ExecutionMode::Serial,
+                effective_mode: ExecutionMode::Serial,
+                effective_blocks: 1,
+                workspace_bytes: 0,
+                fallback_reason: None,
+            },
+            ExecutionPolicy::Parallel {
+                blocks,
+                memory_budget_bytes,
+                allow_serial_fallback,
+            } => {
+                if blocks == 0 {
+                    return Err(DirectFciError::InvalidParallelBlocks);
+                }
+                let effective_blocks = blocks.min(self.kernel.dimension());
+                let workspace_bytes = self
+                    .kernel
+                    .dimension()
+                    .checked_mul(effective_blocks)
+                    .and_then(|values| values.checked_mul(size_of::<f64>()))
+                    .and_then(|bytes| u64::try_from(bytes).ok())
+                    .ok_or(DirectFciError::ParallelWorkspaceOverflow)?;
+                if workspace_bytes > memory_budget_bytes {
+                    if !allow_serial_fallback {
+                        return Err(DirectFciError::ParallelMemoryBudget {
+                            required_bytes: workspace_bytes,
+                            budget_bytes: memory_budget_bytes,
+                        });
+                    }
+                    ExecutionPlan {
+                        requested_mode: ExecutionMode::Parallel,
+                        effective_mode: ExecutionMode::Serial,
+                        effective_blocks: 1,
+                        workspace_bytes: 0,
+                        fallback_reason: Some(format!(
+                            "parallel workspace {workspace_bytes} bytes exceeds budget {memory_budget_bytes} bytes"
+                        )),
+                    }
+                } else {
+                    ExecutionPlan {
+                        requested_mode: ExecutionMode::Parallel,
+                        effective_mode: ExecutionMode::Parallel,
+                        effective_blocks,
+                        workspace_bytes,
+                        fallback_reason: None,
+                    }
+                }
+            }
+        };
+        Ok(self)
+    }
+
+    pub fn apply_with_report(
+        &self,
+        input: &[f64],
+        output: &mut [f64],
+    ) -> Result<ExecutionReport, OperatorError> {
+        self.validate_vectors(input, output)?;
+        let started = Instant::now();
+        match self.execution.effective_mode {
+            ExecutionMode::Serial => self.apply_serial(input, output),
+            ExecutionMode::Parallel => self.apply_parallel(input, output),
+        }
+        Ok(ExecutionReport {
+            requested_mode: self.execution.requested_mode,
+            effective_mode: self.execution.effective_mode,
+            effective_blocks: self.execution.effective_blocks,
+            rayon_threads: rayon::current_num_threads(),
+            workspace_bytes: self.execution.workspace_bytes,
+            fallback_reason: self.execution.fallback_reason.clone(),
+            elapsed_seconds: started.elapsed().as_secs_f64(),
+        })
+    }
+
+    pub fn execution_preflight(&self) -> ExecutionReport {
+        ExecutionReport {
+            requested_mode: self.execution.requested_mode,
+            effective_mode: self.execution.effective_mode,
+            effective_blocks: self.execution.effective_blocks,
+            rayon_threads: rayon::current_num_threads(),
+            workspace_bytes: self.execution.workspace_bytes,
+            fallback_reason: self.execution.fallback_reason.clone(),
+            elapsed_seconds: 0.0,
+        }
+    }
+
+    fn validate_vectors(&self, input: &[f64], output: &[f64]) -> Result<(), OperatorError> {
+        let dimension = self.kernel.dimension();
+        if input.len() != dimension {
+            return Err(OperatorError::InputLength {
+                actual: input.len(),
+                expected: dimension,
+            });
+        }
+        if output.len() != dimension {
+            return Err(OperatorError::OutputLength {
+                actual: output.len(),
+                expected: dimension,
+            });
+        }
+        Ok(())
+    }
+
+    fn apply_serial(&self, input: &[f64], output: &mut [f64]) {
+        output.fill(0.0);
+        for (source, &coefficient) in input.iter().enumerate() {
+            if coefficient == 0.0 {
+                continue;
+            }
+            self.kernel
+                .apply_source(source, coefficient, |destination, value| {
+                    output[destination] += value;
+                })
+                .expect("source originates from the validated input dimension");
+        }
+    }
+
+    fn apply_parallel(&self, input: &[f64], output: &mut [f64]) {
+        let dimension = self.kernel.dimension();
+        let blocks = self.execution.effective_blocks;
+        let partials: Vec<Vec<f64>> = (0..blocks)
+            .into_par_iter()
+            .map(|block| {
+                let start = block * dimension / blocks;
+                let end = (block + 1) * dimension / blocks;
+                let mut partial = vec![0.0; dimension];
+                for (source, &coefficient) in input.iter().enumerate().take(end).skip(start) {
+                    if coefficient == 0.0 {
+                        continue;
+                    }
+                    self.kernel
+                        .apply_source(source, coefficient, |destination, value| {
+                            partial[destination] += value;
+                        })
+                        .expect("source originates from the validated input dimension");
+                }
+                partial
+            })
+            .collect();
+        output.fill(0.0);
+        for partial in partials {
+            for (destination, contribution) in output.iter_mut().zip(partial) {
+                *destination += contribution;
+            }
+        }
     }
 }
 
@@ -181,30 +396,7 @@ impl LinearOperator for DirectFciOperator {
     }
 
     fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<(), OperatorError> {
-        let dimension = self.dimension();
-        if input.len() != dimension {
-            return Err(OperatorError::InputLength {
-                actual: input.len(),
-                expected: dimension,
-            });
-        }
-        if output.len() != dimension {
-            return Err(OperatorError::OutputLength {
-                actual: output.len(),
-                expected: dimension,
-            });
-        }
-        output.fill(0.0);
-        for (source, &coefficient) in input.iter().enumerate() {
-            if coefficient == 0.0 {
-                continue;
-            }
-            self.kernel
-                .apply_source(source, coefficient, |destination, value| {
-                    output[destination] += value;
-                })
-                .expect("source originates from the validated input dimension");
-        }
+        self.apply_with_report(input, output)?;
         Ok(())
     }
 }

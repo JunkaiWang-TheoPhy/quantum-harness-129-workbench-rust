@@ -15,7 +15,7 @@ use ed_workbench_rs::davidson::{
 };
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
-use ed_workbench_rs::direct_fci::DirectFciOperator;
+use ed_workbench_rs::direct_fci::{DirectFciOperator, ExecutionPolicy};
 use ed_workbench_rs::fcidump::Fcidump;
 use ed_workbench_rs::libcint_frontend::{ENERGY_UNIT, compute_ao_integrals};
 use ed_workbench_rs::mbpt::solve_mbpt;
@@ -68,6 +68,16 @@ enum Command {
         memory_budget_gib: f64,
         #[arg(long, requires = "workspace")]
         operator_fingerprint: Option<String>,
+        #[arg(
+            long,
+            default_value_t = 1,
+            help = "fixed ordered source blocks; values greater than one enable parallel sigma"
+        )]
+        parallel_blocks: usize,
+        #[arg(long, default_value_t = 2.0)]
+        parallel_memory_budget_gib: f64,
+        #[arg(long)]
+        strict_parallel_memory: bool,
     },
     Cc {
         fcidump: PathBuf,
@@ -144,6 +154,16 @@ enum Command {
         max_iterations: usize,
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
+        #[arg(
+            long,
+            default_value_t = 1,
+            help = "fixed ordered source blocks; values greater than one enable parallel sigma"
+        )]
+        parallel_blocks: usize,
+        #[arg(long, default_value_t = 2.0)]
+        parallel_memory_budget_gib: f64,
+        #[arg(long)]
+        strict_parallel_memory: bool,
     },
     Benchmark {
         #[arg(value_enum)]
@@ -263,11 +283,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             checkpoint_every,
             memory_budget_gib,
             operator_fingerprint,
+            parallel_blocks,
+            parallel_memory_budget_gib,
+            strict_parallel_memory,
         } => {
             let bytes = fs::read(&fcidump)?;
             let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
             let problem = ElectronicProblem::from_fcidump(&dump)?;
-            let operator = DirectFciOperator::new(problem)?;
+            let operator =
+                DirectFciOperator::new(problem)?.with_execution_policy(execution_policy(
+                    parallel_blocks,
+                    parallel_memory_budget_gib,
+                    strict_parallel_memory,
+                )?)?;
             let mut initial = vec![0.0; operator.dimension()];
             let reference_index = operator
                 .diagonal()
@@ -320,6 +348,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "conservative Davidson vectors: {:.6} GiB",
                 estimated_bytes as f64 / GIB
             );
+            print_execution_preflight(&operator);
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err("Davidson did not converge".into());
@@ -744,6 +773,9 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             residual_tolerance,
             max_iterations,
             max_subspace,
+            parallel_blocks,
+            parallel_memory_budget_gib,
+            strict_parallel_memory,
         } => {
             let integral_started = Instant::now();
             let integrals = compute_ao_integrals(&system.molecule())?;
@@ -757,7 +789,12 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let transform_started = Instant::now();
             let problem = transform_to_mo(&integrals, &rhf)?;
             let transform_time = transform_started.elapsed();
-            let operator = DirectFciOperator::new(problem)?;
+            let operator =
+                DirectFciOperator::new(problem)?.with_execution_policy(execution_policy(
+                    parallel_blocks,
+                    parallel_memory_budget_gib,
+                    strict_parallel_memory,
+                )?)?;
             let mut initial = vec![0.0; operator.dimension()];
             let reference_index = operator
                 .diagonal()
@@ -789,6 +826,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("FCI total energy: {:.15}", result.energy);
             println!("FCI residual norm: {:.3e}", result.residual_norm);
             println!("FCI iterations: {}", result.iterations);
+            print_execution_preflight(&operator);
             println!("integral time: {:.3?}", integral_time);
             println!("RHF time: {:.3?}", rhf_time);
             println!("AO-to-MO time: {:.3?}", transform_time);
@@ -958,6 +996,35 @@ fn davidson_resident_bytes(
         .and_then(|value| value.checked_mul(size_of::<f64>()))
         .ok_or("Davidson resident-byte estimate overflow")?;
     Ok(u64::try_from(bytes)?)
+}
+
+fn execution_policy(
+    blocks: usize,
+    memory_budget_gib: f64,
+    strict_memory: bool,
+) -> Result<ExecutionPolicy, Box<dyn std::error::Error>> {
+    if blocks <= 1 {
+        return Ok(ExecutionPolicy::Serial);
+    }
+    Ok(ExecutionPolicy::Parallel {
+        blocks,
+        memory_budget_bytes: gib_to_bytes(memory_budget_gib)?,
+        allow_serial_fallback: !strict_memory,
+    })
+}
+
+fn print_execution_preflight(operator: &DirectFciOperator) {
+    let report = operator.execution_preflight();
+    println!("requested sigma mode: {:?}", report.requested_mode);
+    println!("effective sigma mode: {:?}", report.effective_mode);
+    println!("sigma source blocks: {}", report.effective_blocks);
+    println!(
+        "parallel sigma workspace: {:.6} GiB",
+        report.workspace_bytes as f64 / GIB
+    );
+    if let Some(reason) = report.fallback_reason {
+        println!("parallel sigma fallback: {reason}");
+    }
 }
 
 fn validate_hirata_context(
