@@ -217,3 +217,62 @@ Primary CC recomputation:
 RAYON_NUM_THREADS=10 cargo test --release --test cc_series \
   live_primary_cc_series_matches_hirata_table2 -- --ignored --nocapture
 ```
+
+## Final release-mode audit
+
+The final v0.4 source state was audited with live calculations in addition to
+the normal static and fast gates.
+
+### Parallel primary Davidson FCI
+
+The optimized binary ran:
+
+```bash
+target/release/ed_workbench_rs davidson \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  --residual-tolerance 1e-7 \
+  --max-iterations 60 \
+  --max-subspace 20 \
+  --parallel-blocks 4 \
+  --parallel-memory-budget-gib 2 \
+  --strict-parallel-memory
+```
+
+Result:
+
+| Quantity | Value |
+|---|---:|
+| energy | `-76.121174204142051 E_h` |
+| difference from committed FCI | `7.1e-14 E_h` |
+| residual norm | `5.044e-8` |
+| Davidson iterations | 16 |
+| effective sigma mode | parallel, 4 source blocks |
+| parallel sigma workspace | `0.007302 GiB` |
+| pure-binary wall time | `41.90 s` |
+| maximum RSS | `102,285,312 bytes` |
+
+### Live CC(1)-CC(8)
+
+The final release test recomputed every CC rank and returned:
+
+```text
+live_primary_cc_series_matches_hirata_table2 ... ok
+```
+
+All eight published comparisons passed. This run took `751.74 s` of test wall
+time, while `/usr/bin/time` recorded only `278.23 s` of user CPU time. The
+large wall/user discrepancy shows that this run was heavily affected by local
+scheduling or frequency conditions. It is retained as a numerical acceptance
+result and does not replace the separately committed primary timing baseline.
+
+### Bounded H2O/cc-pVDZ
+
+The final release-mode ignored integration test passed in `1.94 s` after
+build:
+
+```text
+live_cc_pvdz_benchmark_is_bounded_and_matches_pyscf_rhf ... ok
+```
+
+It reconfirmed the all-electron/no-symmetry dimensions, bounded memory path,
+RHF convergence and PySCF agreement, and `full_fci_executed = false`.
