@@ -36,11 +36,7 @@ blockquote:
 > 不要温和地走进那良夜，<br>
 > 老年应当在日暮时燃烧咆哮；<br>
 > 怒斥，怒斥光明的消逝。<br>
-> ——(《星际穿越》，加州理工大学Kip Thorne担任科学监督)
 ```
-
-Use the correct spelling `Kip Thorne`; `Kip Throne` in the request was a
-typographical error.
 
 ## Media
 
@@ -72,4 +68,3 @@ opening region byte-for-byte except the `Rager` to `Ranger` substitution.
 - the five current technical body suffixes remain unchanged apart from the
   explicit rename;
 - PR #210 remains unchanged.
-

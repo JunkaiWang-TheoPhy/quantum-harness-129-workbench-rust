@@ -13,7 +13,6 @@
 - Modify only PRs #214, #215, #216, #217, and #220.
 - Do not modify PR #210.
 - Preserve current `🌌 Ranger` title wording and all external body edits.
-- Use the correct spelling `Kip Thorne`.
 - Remove both visible `Rager` and lowercase `rager` URL/path occurrences.
 - Reuse the existing approved image bytes without regeneration.
 - Keep the old media branch for auditability; do not delete it.
@@ -124,7 +123,6 @@ Use this exact Markdown:
 > 不要温和地走进那良夜，<br>
 > 老年应当在日暮时燃烧咆哮；<br>
 > 怒斥，怒斥光明的消逝。<br>
-> ——(《星际穿越》，加州理工大学Kip Thorne担任科学监督)
 ```
 
 - [x] **Step 2: Extract each current technical suffix**
@@ -244,5 +242,4 @@ and its GitHub CI completes successfully.
   title and body exactly on read-back.
 - The five PRs contain five unique `assets/ranger/` image URLs.
 - No in-scope title or body contains `Rager` or lowercase `rager`.
-- The Chinese attribution uses the corrected spelling `Kip Thorne`.
 - PR #210 remained byte-for-byte unchanged.

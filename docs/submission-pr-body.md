@@ -6,7 +6,6 @@
 > 不要温和地走进那良夜，<br>
 > 老年应当在日暮时燃烧咆哮；<br>
 > 怒斥，怒斥光明的消逝。<br>
-> ——(《星际穿越》，加州理工大学Kip Thorne担任科学监督)
 
 ![Ranger — determinant states around a gravitationally lensed accretion disk](https://raw.githubusercontent.com/JunkaiWang-TheoPhy/quantum.harness/refs/heads/media/ranger-pr-banners/assets/ranger/pr-217-ed-fci-accretion-states.png)
 
