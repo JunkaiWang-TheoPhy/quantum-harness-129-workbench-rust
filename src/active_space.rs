@@ -72,9 +72,7 @@ pub fn build_active_space(
     }
     let frozen_virtual_set: HashSet<_> = frozen_virtual.iter().copied().collect();
     let active_to_original: Vec<_> = (0..problem.norb)
-        .filter(|orbital| {
-            !occupied_set.contains(orbital) && !frozen_virtual_set.contains(orbital)
-        })
+        .filter(|orbital| !occupied_set.contains(orbital) && !frozen_virtual_set.contains(orbital))
         .collect();
     if active_to_original.is_empty() {
         return Err(ActiveSpaceError::NoActiveOrbitals);

@@ -45,12 +45,11 @@ impl DeterminantBasis {
         let nbeta = (nbeta_twice / 2) as usize;
         let alpha_strings = occupation_strings(norb, nalpha)?;
         let beta_strings = occupation_strings(norb, nbeta)?;
-        let determinant_count = alpha_strings
-            .len()
-            .checked_mul(beta_strings.len())
-            .ok_or(DeterminantError::SpaceTooLarge {
+        let determinant_count = alpha_strings.len().checked_mul(beta_strings.len()).ok_or(
+            DeterminantError::SpaceTooLarge {
                 count: alpha_strings.len() as u128 * beta_strings.len() as u128,
-            })?;
+            },
+        )?;
         let mut determinants = Vec::new();
         determinants
             .try_reserve_exact(determinant_count)
@@ -102,10 +101,8 @@ pub fn occupation_strings(orbitals: usize, electrons: usize) -> Result<Vec<u64>,
         return Err(DeterminantError::TooManyOrbitals);
     }
     let count_u128 = combination_count(orbitals, electrons)?;
-    let count =
-        usize::try_from(count_u128).map_err(|_| DeterminantError::SpaceTooLarge {
-            count: count_u128,
-        })?;
+    let count = usize::try_from(count_u128)
+        .map_err(|_| DeterminantError::SpaceTooLarge { count: count_u128 })?;
     let mut strings = Vec::new();
     strings
         .try_reserve_exact(count)

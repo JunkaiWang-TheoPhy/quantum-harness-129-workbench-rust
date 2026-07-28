@@ -42,11 +42,7 @@ pub fn combination_count(n: usize, k: usize) -> Result<u128, CombinadicError> {
     Ok(result)
 }
 
-pub fn rank_occupation(
-    bits: u64,
-    norb: usize,
-    nelec: usize,
-) -> Result<u128, CombinadicError> {
+pub fn rank_occupation(bits: u64, norb: usize, nelec: usize) -> Result<u128, CombinadicError> {
     validate_space(norb, nelec)?;
     if norb < 64 && bits >> norb != 0 {
         return Err(CombinadicError::BitsOutsideSpace { norb });
@@ -65,21 +61,14 @@ pub fn rank_occupation(
         if bits & (1_u64 << orbital) != 0 {
             rank = rank
                 .checked_add(combination_count(orbital, occupied_index)?)
-                .ok_or(CombinadicError::CountOverflow {
-                    n: norb,
-                    k: nelec,
-                })?;
+                .ok_or(CombinadicError::CountOverflow { n: norb, k: nelec })?;
             occupied_index += 1;
         }
     }
     Ok(rank)
 }
 
-pub fn unrank_occupation(
-    rank: u128,
-    norb: usize,
-    nelec: usize,
-) -> Result<u64, CombinadicError> {
+pub fn unrank_occupation(rank: u128, norb: usize, nelec: usize) -> Result<u64, CombinadicError> {
     validate_space(norb, nelec)?;
     let count = combination_count(norb, nelec)?;
     if rank >= count {
