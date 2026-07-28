@@ -6,17 +6,21 @@ test suite do not import PySCF.
 From the repository root:
 
 ```bash
-uv venv --python 3.12
-uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
-.venv/bin/python scripts/oracle/generate.py
+uv sync --locked
+uv run --frozen python scripts/oracle/generate.py
 ```
+
+The root `.python-version`, `pyproject.toml`, and `uv.lock` pin CPython
+3.12.11, uv 0.11.32, PySCF 2.14.0, and all transitive dependencies. The
+`scripts/oracle/requirements.txt` file remains only as a minimal compatibility
+input for tools that cannot consume a uv project lock.
 
 The generator writes `FCIDUMP`, `reference.json`, and `ao_reference.json` into
 the selected fixture directories. Generate only the equilibrium H2 fixture
 without touching existing fixtures with:
 
 ```bash
-.venv/bin/python scripts/oracle/generate.py h2-equilibrium-sto3g
+uv run --frozen python scripts/oracle/generate.py h2-equilibrium-sto3g
 ```
 
 The equilibrium fixture uses an H-H distance of 0.7414 Å. The original
@@ -34,7 +38,7 @@ CC amplitudes are dimensionless.
 The primary challenge fixture can be regenerated in isolation with:
 
 ```bash
-.venv/bin/python scripts/oracle/generate.py h2o-631g-fc
+uv run --frozen python scripts/oracle/generate.py h2o-631g-fc
 ```
 
 It uses H2O/6-31G, `R(O-H)=0.967 Å`, `angle(H-O-H)=107.6°`, and freezes the

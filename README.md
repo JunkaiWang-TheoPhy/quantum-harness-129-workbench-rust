@@ -122,12 +122,12 @@ cargo run -- verify fixtures/h2-sto3g/FCIDUMP fixtures/h2-sto3g/reference.json
 cargo run -- verify fixtures/h4-sto3g/FCIDUMP fixtures/h4-sto3g/reference.json
 ```
 
-Regenerate the independent oracle only when needed:
+Regenerate the independent oracle only when needed. The project pins Python,
+uv, PySCF, and every transitive Python dependency:
 
 ```bash
-uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
-.venv/bin/python scripts/oracle/generate.py
+uv sync --locked
+uv run --frozen python scripts/oracle/generate.py
 ```
 
 The exact comparisons live in
@@ -260,11 +260,10 @@ collision-reducing scatter-add with explicit deterministic semantics.
 
 ## Verification: Trust, but Recompute
 
-Install the pinned Python oracle environment once:
+Install the fully locked Python oracle environment once:
 
 ```bash
-uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -r scripts/oracle/requirements.txt
+uv sync --locked
 ```
 
 Then run every normal submission gate—Rust formatting, Clippy, locked tests,
