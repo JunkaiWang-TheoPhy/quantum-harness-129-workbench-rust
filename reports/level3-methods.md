@@ -129,6 +129,12 @@ The implementation applies the anti-Hermitian generator `T-T†`, evaluates its
 Taylor exponential action, and minimizes the normalized variational energy
 using deterministic BFGS with a line search and finite-difference gradient.
 
+The stronger H4/STO-3G full-rank check uses 35 UCC(4) parameters and converges
+in 22 BFGS iterations to −2.166387448634763 Hartree with a gradient norm of
+5.605 × 10⁻⁸. This agrees with FCI to floating-point precision. See
+[`reports/multiroot-and-ucc.md`](multiroot-and-ucc.md) for the complete record
+and scope boundary.
+
 ## Commands
 
 ```bash
@@ -136,6 +142,7 @@ cargo run --release -- ci fixtures/h4-sto3g/FCIDUMP --rank 4
 cargo run --release -- mbpt \
   fixtures/h2-sto3g/FCIDUMP fixtures/h2-sto3g/reference.json --order 6
 cargo run --release -- ucc fixtures/h2-sto3g/FCIDUMP --rank 2
+cargo run --release -- ucc fixtures/h4-sto3g/FCIDUMP --rank 4
 ```
 
 CI and MBPT are practical on the direct-FCI spaces supported by Level 1.

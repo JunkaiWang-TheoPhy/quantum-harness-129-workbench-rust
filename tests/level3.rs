@@ -81,6 +81,14 @@ fn h4_full_rank_ucc_reaches_fci_variationally() {
     assert!(result.value <= hf_energy + 1e-10);
     assert!(result.value >= reference.fci_energy - 1e-10);
     assert!((result.value - reference.fci_energy).abs() < 1e-8);
+    let committed: serde_json::Value = serde_json::from_slice(
+        &fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h4-sto3g/ucc4_result.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(committed["calculation_commit"].as_str().unwrap().len(), 40);
+    assert_eq!(committed["energy_unit"], "hartree");
+    assert!((result.value - committed["ucc_energy"].as_f64().unwrap()).abs() < 1e-12);
 }
 
 #[test]

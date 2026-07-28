@@ -34,13 +34,25 @@ fn h4_three_root_davidson_matches_dense_diagonalization() {
         },
     )
     .unwrap();
-    for (result, expected) in results.iter().zip(expected) {
+    let committed: serde_json::Value = serde_json::from_slice(
+        &fs::read(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h4-sto3g/multiroot_results.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(committed["calculation_commit"].as_str().unwrap().len(), 40);
+    assert_eq!(committed["energy_unit"], "hartree");
+    for (root, (result, expected)) in results.iter().zip(expected).enumerate() {
         assert!(result.converged, "residual {}", result.residual_norm);
         assert!(
             (result.energy - expected).abs() < 1e-10,
             "Davidson {}, dense {}",
             result.energy,
             expected
+        );
+        assert!(
+            (result.energy - committed["results"][root]["energy"].as_f64().unwrap()).abs() < 1e-12
         );
     }
     for left in 0..results.len() {

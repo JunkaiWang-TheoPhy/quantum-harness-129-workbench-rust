@@ -48,6 +48,7 @@ The production algorithms run in Rust:
 - dense tiny-system Hamiltonians used as independent internal oracles;
 - matrix-free spin-free sigma contraction;
 - Davidson diagonalization with preconditioning and restart;
+- block Davidson for several orthogonal low-energy roots;
 - determinant-based CI(n), CC(n), MBPT(n), and unitary CC(n);
 - exact excitation-rank subset convolution for `exp(T)|HF>`;
 - direct `libcint` AO integrals, Rust RHF, DIIS, and AO-to-MO transformation.
@@ -128,6 +129,13 @@ Run every normal submission gate:
 
 ```bash
 scripts/verify-submission.sh
+```
+
+Compute the lowest three H₄ roots and excitation energies:
+
+```bash
+cargo run --release -- davidson-roots fixtures/h4-sto3g/FCIDUMP \
+  --roots 3 --residual-tolerance 1e-10 --max-subspace 12
 ```
 
 ## The Climb
@@ -365,6 +373,8 @@ active interpreter rather than `.venv`.
   frozen-core FCI.
 - [Stretched-water report](reports/stretched-water.md) — independent
   Davidson FCI and CC(1)-CC(8) checks at 1.5 Rₑ and 2.0 Rₑ.
+- [Multi-root Davidson and UCC report](reports/multiroot-and-ucc.md) —
+  dense-verified H₄ excited roots and a full-rank 35-parameter UCC check.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 
