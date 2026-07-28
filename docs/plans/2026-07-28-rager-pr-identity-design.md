@@ -25,9 +25,9 @@ it into the ungrammatical `and Rager`.
 Every body begins with this exact Markdown block quote:
 
 ```markdown
-> Do not go gentle into that good night,
-> Old age should burn and rave at close of day;
-> Rage, rage against the dying of the light.
+> Do not go gentle into that good night,<br>
+> Old age should burn and rave at close of day;<br>
+> Rage, rage against the dying of the light.<br>
 > —— [Dylan Thomas](https://www.poetryfoundation.org/poets/dylan-thomas), 「**Do Not Go Gentle into That Good Night**」
 ```
 
@@ -35,18 +35,21 @@ The PR-specific banner follows the quotation and precedes the original body.
 
 ## Visual System
 
-Generate five original 21:9 cinematic space banners with GPT Image 2. The
-images may evoke the scale, solitude, celestial light, and exploratory tension
-associated with *Interstellar*, but must not reproduce actors, characters,
-logos, typography, costumes, spacecraft designs, or identifiable film shots.
-No banner contains text.
+Generate five original 21:9 cinematic space banners with GPT Image. The
+explicit GPT Image 2 CLI route was unavailable because the local OpenAI
+environment was configured for a non-image DeepSeek endpoint; the user then
+explicitly authorized the Codex built-in GPT Image route. The images evoke the
+grounded 70mm cinematography, scientific scale, solitude, celestial light, and
+exploratory tension associated with *Interstellar*, but do not reproduce
+actors, characters, logos, typography, costumes, spacecraft designs, or
+identifiable film shots. No banner contains text.
 
 | PR | Banner concept |
 |---|---|
-| #214 | A luminous tensor lattice bending around a black hole |
-| #215 | A minimal glowing circuit across a frozen alien world |
-| #216 | A crystalline proof lattice inside monumental cosmic architecture |
-| #217 | An accretion disk surrounded by determinant-like stellar states and Hamiltonian orbital paths |
+| #214 | Natural tensor-like wave fronts on a shallow ocean world facing a black hole |
+| #215 | Circuit-like natural fractures across a frozen alien world |
+| #216 | A physical proof lattice inside an impossible five-dimensional archive |
+| #217 | A gravitationally lensed accretion disk and discrete determinant-like stellar shells |
 | #220 | A solitary original spacecraft performing a gravity slingshot past a ringed planet |
 
 Each concept uses a different composition and dominant palette so that the
@@ -70,4 +73,3 @@ After editing, retrieve all five PRs again and verify:
 - every body contains exactly one unique Rager banner URL;
 - the original technical body remains after the inserted header;
 - PR #210's title and body remain unchanged.
-

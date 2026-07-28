@@ -1,10 +1,17 @@
-# Rewrite It In Rust! — completed #129 submission
+> Do not go gentle into that good night,<br>
+> Old age should burn and rave at close of day;<br>
+> Rage, rage against the dying of the light.<br>
+> —— [Dylan Thomas](https://www.poetryfoundation.org/poets/dylan-thomas), 「**Do Not Go Gentle into That Good Night**」
+
+![Rager — determinant states around a gravitationally lensed accretion disk](https://raw.githubusercontent.com/JunkaiWang-TheoPhy/quantum.harness/refs/heads/media/rager-pr-banners/assets/rager/pr-217-ed-fci-accretion-states.png)
+
+# Rager — completed #129 submission
 
 ## Team
 
 | Field | Value |
 |---|---|
-| Team | Rewrite It In Rust! (RIIR 2607 Hefei) |
+| Team | Rager |
 | Members | Chenxi Wan, Yedi Shen, Junkai Wang |
 | Challenge | [#129 — Exact diagonalization workbench in Rust for electronic structure method development](https://github.com/QuantumBFS/quantum.harness/issues/129) |
 | Public workbench | [`JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust) |
