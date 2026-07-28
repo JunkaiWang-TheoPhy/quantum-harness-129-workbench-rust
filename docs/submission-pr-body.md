@@ -3,15 +3,20 @@
 > Rage, rage against the dying of the light.<br>
 > —— [Dylan Thomas](https://www.poetryfoundation.org/poets/dylan-thomas), 「**Do Not Go Gentle into That Good Night**」
 
-![Rager — determinant states around a gravitationally lensed accretion disk](https://raw.githubusercontent.com/JunkaiWang-TheoPhy/quantum.harness/refs/heads/media/rager-pr-banners/assets/rager/pr-217-ed-fci-accretion-states.png)
+> 不要温和地走进那良夜，<br>
+> 老年应当在日暮时燃烧咆哮；<br>
+> 怒斥，怒斥光明的消逝。<br>
+> ——(《星际穿越》，加州理工大学Kip Thorne担任科学监督)
 
-# Rager — completed #129 submission
+![Ranger — determinant states around a gravitationally lensed accretion disk](https://raw.githubusercontent.com/JunkaiWang-TheoPhy/quantum.harness/refs/heads/media/ranger-pr-banners/assets/ranger/pr-217-ed-fci-accretion-states.png)
+
+# Ranger — completed #129 submission
 
 ## Team
 
 | Field | Value |
 |---|---|
-| Team | Rager |
+| Team | Ranger |
 | Members | Chenxi Wan, Yedi Shen, Junkai Wang |
 | Challenge | [#129 — Exact diagonalization workbench in Rust for electronic structure method development](https://github.com/QuantumBFS/quantum.harness/issues/129) |
 | Public workbench | [`JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust) |
