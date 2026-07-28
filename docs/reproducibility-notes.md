@@ -29,7 +29,9 @@ It does not replace the cited papers or official API documentation.
 
 Extended targets:
 
-- Water/DZ, all electrons: `-76.156699 hartree`.
+- Water/DZ, all electrons: `-76.156699 hartree`. This target is now
+  reproduced in `fixtures/h2o-dz-ae` and documented in
+  `reports/extended-h2o-dz.md`.
 - Water/DZP, frozen oxygen 1s: `-76.256624 hartree`.
 - Reproduce the geometry and basis definitions from Bauschlicher 1986 rather
   than substituting similarly named modern basis-library entries without

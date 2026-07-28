@@ -70,10 +70,13 @@ finite Taylor expansion remains as an independent small-system oracle.
   list, machine-readable evidence, and upstream reproduction materials are
   committed.
 
-One boundary stays deliberately explicit: the Kállay 2001 DZ/DZP
-calculations are extended targets. No primary 6-31G result is presented as
-evidence for those different Hamiltonians. RIIR means rewriting the
-implementation—not rewriting the scientific claim.
+The Kállay 2001 all-electron DZ FCI extension is now reproduced with
+1,002,708 determinants in the target symmetry sector: Rust gives
+`-76.156699030930056` hartree versus PySCF
+`-76.156699030929800` hartree. The much larger frozen-core DZP calculation
+remains an extended target. No primary 6-31G result is presented as evidence
+for a different Hamiltonian. RIIR means rewriting the implementation—not
+rewriting the scientific claim.
 
 ## Quick Start
 
@@ -89,6 +92,13 @@ Reproduce the headline FCI result:
 ```bash
 cargo run --release -- davidson fixtures/h2o-631g-fc/FCIDUMP \
   --residual-tolerance 1e-7 --max-iterations 60 --max-subspace 20
+```
+
+Reproduce the all-electron H2O/DZ extension:
+
+```bash
+cargo run --release -- davidson fixtures/h2o-dz-ae/FCIDUMP \
+  --residual-tolerance 1e-7 --max-iterations 40 --max-subspace 20
 ```
 
 Run every normal submission gate:
@@ -323,6 +333,8 @@ active interpreter rather than `.venv`.
   CC(n).
 - [Level 4 report](reports/level4-integrals.md) — Python-free direct-integral
   pipeline and element-level PySCF comparisons.
+- [Extended H2O/DZ report](reports/extended-h2o-dz.md) — exact historical
+  basis/geometry reproduction and million-determinant all-electron FCI.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 

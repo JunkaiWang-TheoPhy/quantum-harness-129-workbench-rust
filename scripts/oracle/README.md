@@ -53,3 +53,14 @@ oxygen 1s orbital after RHF. Regeneration is an oracle audit, not a prerequisite
 for the Rust calculations. Before replacing any committed primary fixture,
 require the generated FCIDUMP checksum and every numerical reference field to
 match or document and review the platform-dependent difference.
+
+The extended all-electron H2O/DZ fixture can be regenerated with:
+
+```bash
+uv run --frozen python scripts/oracle/generate.py h2o-dz-ae
+```
+
+This system uses the exact Bohr coordinates and printed O `(9s5p)/[4s2p]` and
+H `(4s)/[2s]` contractions from Bauschlicher and Taylor 1986, not a similarly
+named modern basis. Spatial symmetry is enabled and exported with
+`molpro_orbsym=True`.

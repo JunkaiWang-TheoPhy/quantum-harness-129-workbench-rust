@@ -9,16 +9,20 @@ from pathlib import Path
 import numpy
 from pyscf import gto
 
-from scripts.oracle.generate import SYSTEMS, System
+from scripts.oracle.generate import (
+    SYSTEMS,
+    System,
+    basis_for_system,
+    bauschlicher_1986_basis,
+)
 
 
 class GeometryUnitTests(unittest.TestCase):
     def molecule(self, slug: str) -> tuple[System, numpy.ndarray]:
         system = SYSTEMS[slug]
-        self.assertEqual(system.coordinate_unit, "Angstrom")
         molecule = gto.M(
             atom=system.atom,
-            basis=system.basis,
+            basis=basis_for_system(system),
             charge=system.charge,
             spin=system.spin,
             unit=system.coordinate_unit,
@@ -28,6 +32,7 @@ class GeometryUnitTests(unittest.TestCase):
 
     def test_h2_coordinates_mean_a_1_4_angstrom_bond(self) -> None:
         system, coordinates = self.molecule("h2-sto3g")
+        self.assertEqual(system.coordinate_unit, "Angstrom")
         distance = numpy.linalg.norm(coordinates[1] - coordinates[0])
         self.assertAlmostEqual(distance, 1.4, places=12)
         self.assertEqual(
@@ -37,6 +42,7 @@ class GeometryUnitTests(unittest.TestCase):
 
     def test_equilibrium_h2_has_a_0_7414_angstrom_bond(self) -> None:
         system, coordinates = self.molecule("h2-equilibrium-sto3g")
+        self.assertEqual(system.coordinate_unit, "Angstrom")
         distance = numpy.linalg.norm(coordinates[1] - coordinates[0])
         self.assertAlmostEqual(distance, 0.7414, places=12)
         self.assertEqual(
@@ -46,6 +52,7 @@ class GeometryUnitTests(unittest.TestCase):
 
     def test_h4_has_one_angstrom_adjacent_spacing(self) -> None:
         system, coordinates = self.molecule("h4-sto3g")
+        self.assertEqual(system.coordinate_unit, "Angstrom")
         distances = [
             numpy.linalg.norm(coordinates[index + 1] - coordinates[index])
             for index in range(3)
@@ -60,6 +67,7 @@ class GeometryUnitTests(unittest.TestCase):
     def test_water_geometry_is_0_967_angstrom_and_107_6_degrees(self) -> None:
         for slug in ("h2o-sto3g", "h2o-631g-fc"):
             system, coordinates = self.molecule(slug)
+            self.assertEqual(system.coordinate_unit, "Angstrom")
             first_bond = coordinates[1] - coordinates[0]
             second_bond = coordinates[2] - coordinates[0]
             first_length = numpy.linalg.norm(first_bond)
@@ -82,13 +90,41 @@ class GeometryUnitTests(unittest.TestCase):
         for slug, system in SYSTEMS.items():
             reference_path = fixtures_root / slug / "reference.json"
             reference = json.loads(reference_path.read_text(encoding="utf-8"))
-            self.assertEqual(reference["coordinate_unit"], "angstrom")
+            self.assertEqual(
+                reference["coordinate_unit"], system.coordinate_unit.lower()
+            )
             self.assertEqual(reference["energy_unit"], "hartree")
             expected_parameters = [
                 {"name": name, "value": value, "unit": unit}
                 for name, value, unit in system.geometry_parameters
             ]
             self.assertEqual(reference["geometry_parameters"], expected_parameters)
+
+    def test_bauschlicher_dz_uses_the_printed_basis_and_bohr_geometry(self) -> None:
+        system = SYSTEMS["h2o-dz-ae"]
+        self.assertEqual(system.coordinate_unit, "Bohr")
+        self.assertTrue(system.symmetry)
+        basis = bauschlicher_1986_basis()
+        self.assertEqual(basis["H"][0][1], [19.2384, 0.032828])
+        self.assertEqual(basis["H"][-1], [0, [0.177552, 1.0]])
+        self.assertEqual(basis["O"][0][1], [7817.0, 0.002031])
+        self.assertEqual(basis["O"][-1], [1, [0.2137, 1.0]])
+
+        molecule = gto.M(
+            atom=system.atom,
+            basis=basis_for_system(system),
+            unit=system.coordinate_unit,
+            verbose=0,
+        )
+        coordinates = molecule.atom_coords(unit="Bohr")
+        first_bond = coordinates[1] - coordinates[0]
+        second_bond = coordinates[2] - coordinates[0]
+        distance = numpy.linalg.norm(first_bond)
+        cosine = numpy.dot(first_bond, second_bond) / distance**2
+        angle_degrees = numpy.degrees(numpy.arccos(cosine))
+        self.assertAlmostEqual(distance, 1.889726334392893, places=12)
+        self.assertAlmostEqual(angle_degrees, 104.50000893084858, places=12)
+        self.assertEqual(molecule.nao_nr(), 14)
 
 
 if __name__ == "__main__":

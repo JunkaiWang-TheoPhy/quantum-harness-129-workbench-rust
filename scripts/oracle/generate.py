@@ -23,11 +23,64 @@ class System:
     name: str
     atom: str
     basis: str = "sto-3g"
+    basis_definition: str | None = None
+    basis_provenance: str | None = None
     charge: int = 0
     spin: int = 0
     coordinate_unit: str = "Angstrom"
     geometry_parameters: tuple[tuple[str, float, str], ...] = ()
     frozen_orbitals: tuple[int, ...] = ()
+    symmetry: bool = False
+
+
+def bauschlicher_1986_basis(polarized: bool = False) -> dict[str, list[list[object]]]:
+    """Return the H2O basis printed in Bauschlicher and Taylor, JCP 85, 2779."""
+
+    hydrogen: list[list[object]] = [
+        [
+            0,
+            [19.2384, 0.032828],
+            [2.89872, 0.231204],
+            [0.653472, 0.817226],
+        ],
+        [0, [0.177552, 1.0]],
+    ]
+    oxygen: list[list[object]] = [
+        [
+            0,
+            [7817.0, 0.002031],
+            [1176.0, 0.015436],
+            [273.2, 0.073771],
+            [81.17, 0.247606],
+            [27.18, 0.611832],
+            [3.414, 0.241205],
+        ],
+        [0, [9.532, 1.0]],
+        [0, [0.9398, 1.0]],
+        [0, [0.2846, 1.0]],
+        [
+            1,
+            [35.18, 0.019580],
+            [7.904, 0.124200],
+            [2.305, 0.394714],
+            [0.7171, 0.627375],
+        ],
+        [1, [0.2137, 1.0]],
+    ]
+    if polarized:
+        hydrogen.append([1, [0.8, 1.0]])
+        oxygen.append([2, [1.2, 1.0]])
+    return {"H": hydrogen, "O": oxygen}
+
+
+def basis_for_system(system: System) -> str | dict[str, list[list[object]]]:
+    if system.basis_definition == "bauschlicher-1986-dz":
+        return bauschlicher_1986_basis()
+    if system.basis_definition == "bauschlicher-1986-dzp":
+        return bauschlicher_1986_basis(polarized=True)
+    if system.basis_definition is not None:
+        raise ValueError(f"unknown basis definition {system.basis_definition}")
+    return system.basis
 
 
 SYSTEMS = {
@@ -74,6 +127,24 @@ SYSTEMS = {
         ),
         frozen_orbitals=(0,),
     ),
+    "h2o-dz-ae": System(
+        slug="h2o-dz-ae",
+        name="H2O Bauschlicher DZ all-electron",
+        # Exact Table II Cartesian coordinates in Bohr.
+        atom="O 0 0 0; H 1.494187 0 1.156923; H -1.494187 0 1.156923",
+        basis="Bauschlicher 1986 DZ",
+        basis_definition="bauschlicher-1986-dz",
+        basis_provenance=(
+            "Bauschlicher and Taylor, J. Chem. Phys. 85, 2779 (1986), "
+            "Table I; DOI 10.1063/1.451034"
+        ),
+        coordinate_unit="Bohr",
+        geometry_parameters=(
+            ("R(O-H)", 1.889726334392893, "bohr"),
+            ("angle(H-O-H)", 104.50000893084858, "degree"),
+        ),
+        symmetry=True,
+    ),
 }
 
 
@@ -92,11 +163,11 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
 
     mol = gto.M(
         atom=system.atom,
-        basis=system.basis,
+        basis=basis_for_system(system),
         charge=system.charge,
         spin=system.spin,
         unit=system.coordinate_unit,
-        symmetry=False,
+        symmetry=system.symmetry,
         verbose=0,
     )
     mf = scf.RHF(mol)
@@ -133,6 +204,15 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
             active_nelec,
             nuc=ecore,
             ms=system.spin,
+            orbsym=(
+                fcidump._convert_orbsym(
+                    mol,
+                    mf.get_orbsym()[list(active)],
+                    molpro_orbsym=True,
+                )
+                if system.symmetry
+                else None
+            ),
             tol=1e-15,
             float_format=" %.16g",
         )
@@ -146,7 +226,13 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
             ecore=ecore,
         )
     else:
-        fcidump.from_scf(mf, str(dump_path), tol=1e-15, float_format=" %.16g")
+        fcidump.from_scf(
+            mf,
+            str(dump_path),
+            tol=1e-15,
+            float_format=" %.16g",
+            molpro_orbsym=system.symmetry,
+        )
         cisolver = fci.FCI(mf)
         cisolver.conv_tol = 1e-12
         fci_energy, _ = cisolver.kernel()
@@ -164,15 +250,20 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "schema_version": 1,
         "system": system.name,
         "slug": system.slug,
-        "geometry_angstrom": system.atom,
+        "geometry": system.atom,
         "coordinate_unit": system.coordinate_unit.lower(),
         "geometry_parameters": [
             {"name": name, "value": value, "unit": unit}
             for name, value, unit in system.geometry_parameters
         ],
         "basis": system.basis,
+        "basis_definition": system.basis_definition,
+        "basis_provenance": system.basis_provenance,
         "charge": system.charge,
         "spin": system.spin,
+        "point_group": mol.groupname,
+        "symmetry_enabled": system.symmetry,
+        "fcidump_orbsym_convention": "molpro-1-based" if system.symmetry else "all-1",
         "frozen_orbitals": list(frozen),
         "nuclear_repulsion_energy": float(mol.energy_nuc()),
         "number_of_atomic_orbitals": int(mol.nao_nr()),
@@ -196,6 +287,7 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "generator": "scripts/oracle/generate.py",
         "energy_unit": "hartree",
     }
+    reference[f"geometry_{system.coordinate_unit.lower()}"] = system.atom
     reference_path = output_dir / "reference.json"
     reference_path.write_text(
         json.dumps(reference, indent=2, sort_keys=True) + "\n",
