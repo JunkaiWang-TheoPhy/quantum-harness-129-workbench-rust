@@ -64,6 +64,7 @@ pub fn freeze_core(
             }
         }
     }
+    let active_orbsym = active.iter().map(|&index| problem.orbsym[index]).collect();
     let mut active_problem = ElectronicProblem::new(
         nactive,
         problem.nelec - 2 * frozen.len(),
@@ -71,7 +72,8 @@ pub fn freeze_core(
         ecore,
         h1,
         eri,
-    )?;
+    )?
+    .with_symmetry(active_orbsym, problem.isym)?;
     if let Some(energies) = &problem.orbital_energies {
         active_problem.orbital_energies =
             Some(active.iter().map(|&index| energies[index]).collect());
@@ -101,5 +103,16 @@ mod tests {
         assert_eq!(active.norb, 1);
         assert_eq!(active.nelec, 2);
         assert!((active.ecore - (-0.8)).abs() < 1e-12);
+    }
+
+    #[test]
+    fn freezing_a_doubly_occupied_orbital_preserves_total_symmetry() {
+        let problem = ElectronicProblem::new(2, 4, 0, 0.0, vec![0.0; 4], vec![0.0; 16])
+            .unwrap()
+            .with_symmetry(vec![4, 1], 1)
+            .unwrap();
+        let active = freeze_core(&problem, &[0]).unwrap();
+        assert_eq!(active.orbsym, vec![1]);
+        assert_eq!(active.isym, 1);
     }
 }

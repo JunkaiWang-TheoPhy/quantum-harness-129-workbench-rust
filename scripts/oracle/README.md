@@ -35,6 +35,13 @@ Bohr. Total energies, orbital energies, nuclear repulsion, and FCIDUMP
 integrals are in Hartree; overlap, orbital coefficients, CI coefficients, and
 CC amplitudes are dimensionless.
 
+Symmetry-enabled FCIDUMPs use one-based Molpro `ORBSYM` labels in the range
+1–8 and a one-based `ISYM` target. When calling PySCF's
+`pyscf.tools.fcidump.from_scf`, pass `molpro_orbsym=True`; PySCF's default
+zero-based internal labels are a different convention. The Rust determinant
+basis retains only alpha/beta string pairs whose direct-product irrep equals
+`ISYM`.
+
 The primary challenge fixture can be regenerated in isolation with:
 
 ```bash

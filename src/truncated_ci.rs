@@ -20,7 +20,7 @@ impl<'a> ProjectedOperator<'a> {
         rank: usize,
     ) -> Result<Self, DeterminantError> {
         let problem = full.problem();
-        let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+        let basis = DeterminantBasis::from_problem(problem)?;
         let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
         let selected: Vec<_> = basis
             .determinants
@@ -124,7 +124,7 @@ pub fn solve_ci_series(
 ) -> Result<Vec<CiSeriesEntry>, TruncatedCiError> {
     validate_rank(full, max_rank)?;
     let problem = full.problem();
-    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    let basis = DeterminantBasis::from_problem(problem)?;
     let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
     let reference_index = basis
         .address(reference)

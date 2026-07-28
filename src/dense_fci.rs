@@ -16,7 +16,8 @@ pub enum DenseFciError {
 }
 
 pub fn ground_state_energy(dump: &Fcidump) -> Result<f64, DenseFciError> {
-    let basis = DeterminantBasis::new(dump.norb, dump.nelec, dump.ms2)?;
+    let basis =
+        DeterminantBasis::with_symmetry(dump.norb, dump.nelec, dump.ms2, &dump.orbsym, dump.isym)?;
     let matrix = build_dense_hamiltonian(dump, &basis);
     let asymmetry = (&matrix - matrix.transpose()).amax();
     if asymmetry > 1e-10 {

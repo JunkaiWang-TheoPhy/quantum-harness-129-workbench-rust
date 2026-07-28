@@ -45,6 +45,12 @@ pub enum FcidumpError {
     },
     #[error("integral on line {line} is not finite")]
     NonFiniteIntegral { line: usize },
+    #[error("ORBSYM contains {actual} labels, expected NORB={expected}")]
+    OrbitalSymmetryLength { actual: usize, expected: usize },
+    #[error("ORBSYM[{orbital}]={irrep} is outside the Molpro range 1..=8")]
+    InvalidOrbitalSymmetry { orbital: usize, irrep: usize },
+    #[error("ISYM={0} is outside the Molpro range 1..=8")]
+    InvalidWavefunctionSymmetry(usize),
 }
 
 impl Fcidump {
@@ -85,6 +91,22 @@ impl Fcidump {
             })
             .transpose()?
             .unwrap_or_else(|| vec![1; norb]);
+        if orbsym.len() != norb {
+            return Err(FcidumpError::OrbitalSymmetryLength {
+                actual: orbsym.len(),
+                expected: norb,
+            });
+        }
+        if let Some((orbital, &irrep)) = orbsym
+            .iter()
+            .enumerate()
+            .find(|(_, irrep)| !(1..=8).contains(*irrep))
+        {
+            return Err(FcidumpError::InvalidOrbitalSymmetry { orbital, irrep });
+        }
+        if !(1..=8).contains(&isym) {
+            return Err(FcidumpError::InvalidWavefunctionSymmetry(isym));
+        }
 
         let mut result = Self {
             norb,
@@ -185,7 +207,10 @@ impl Fcidump {
 
 fn parse_header_fields(header: &str) -> HashMap<String, String> {
     let normalized = header
-        .replace(['\n', '\r'], " ")
+        // A Fortran namelist may use a newline instead of a comma between
+        // fields. Treating it as another separator also preserves wrapped
+        // ORBSYM lists because value-only segments extend the active field.
+        .replace(['\n', '\r'], ",")
         .replace("&FCIDUMP", "")
         .replace("&fcidump", "")
         .replace("&FCI", "")
@@ -315,5 +340,17 @@ mod tests {
             Fcidump::parse(input),
             Err(FcidumpError::InvalidOrbitalIndex { .. })
         ));
+    }
+
+    #[test]
+    fn parses_pyscf_header_without_a_comma_before_isym() {
+        let input = "&FCI NORB=7,NELEC=10,MS2=0,\n\
+                     ORBSYM=1,1,3,1,2,1,3\n\
+                     ISYM=1,\n\
+                     &END\n\
+                     0.0 0 0 0 0\n";
+        let dump = Fcidump::parse(input).unwrap();
+        assert_eq!(dump.orbsym, vec![1, 1, 3, 1, 2, 1, 3]);
+        assert_eq!(dump.isym, 1);
     }
 }

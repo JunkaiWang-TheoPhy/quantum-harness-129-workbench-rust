@@ -107,7 +107,9 @@ convention prove itself on systems small enough to diagonalize explicitly.
 Level 0 is complete for equilibrium and stretched H2 plus linear H4/STO-3G:
 
 - PySCF-generated RHF, FCI, CCSD, FCIDUMP, and provenance/checksum artifacts;
-- Rust FCIDUMP parsing with Mulliken symmetry and Fortran exponent support;
+- Rust FCIDUMP parsing with Fortran exponent and one-based Molpro
+  `ORBSYM`/`ISYM` support;
+- compact determinant enumeration in the requested Abelian symmetry sector;
 - Rust alpha/beta determinant enumeration and fermionic operator signs;
 - Rust explicit dense Hamiltonian construction and symmetric diagonalization;
 - automatic `1e-10`-hartree verification against PySCF FCI.

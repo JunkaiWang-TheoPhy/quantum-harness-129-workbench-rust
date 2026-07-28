@@ -88,7 +88,6 @@ impl<'a> ClusterExpansionPlan<'a> {
 
         let mut wavefunction = vec![0.0; self.basis.len()];
         wavefunction[self.space.reference_index] = 1.0;
-        let beta_count = self.basis.beta_strings.len();
 
         for target_rank in 1..self.targets_by_rank.len() {
             let targets = &self.targets_by_rank[target_rank];
@@ -96,28 +95,16 @@ impl<'a> ClusterExpansionPlan<'a> {
                 targets
                     .par_iter()
                     .map(|&target| {
-                        self.target_coefficient(
-                            &wavefunction,
-                            amplitudes,
-                            target,
-                            target_rank,
-                            beta_count,
-                        )
-                        .map(|coefficient| (target, coefficient))
+                        self.target_coefficient(&wavefunction, amplitudes, target, target_rank)
+                            .map(|coefficient| (target, coefficient))
                     })
                     .collect()
             } else {
                 targets
                     .iter()
                     .map(|&target| {
-                        self.target_coefficient(
-                            &wavefunction,
-                            amplitudes,
-                            target,
-                            target_rank,
-                            beta_count,
-                        )
-                        .map(|coefficient| (target, coefficient))
+                        self.target_coefficient(&wavefunction, amplitudes, target, target_rank)
+                            .map(|coefficient| (target, coefficient))
                     })
                     .collect()
             };
@@ -134,10 +121,11 @@ impl<'a> ClusterExpansionPlan<'a> {
         amplitudes: &Amplitudes,
         target: usize,
         target_rank: usize,
-        beta_count: usize,
     ) -> Result<f64, ClusterError> {
-        let alpha_target = target / beta_count;
-        let beta_target = target % beta_count;
+        let (alpha_target, beta_target) = self
+            .basis
+            .string_pair(target)
+            .expect("target address belongs to determinant basis");
         let mut coefficient = 0.0;
         for alpha in &self.alpha_partitions[alpha_target] {
             for beta in &self.beta_partitions[beta_target] {
@@ -145,8 +133,12 @@ impl<'a> ClusterExpansionPlan<'a> {
                 if amplitude_rank == 0 || amplitude_rank > self.space.max_rank {
                     continue;
                 }
-                let amplitude_determinant =
-                    alpha.amplitude_string * beta_count + beta.amplitude_string;
+                let Some(amplitude_determinant) = self
+                    .basis
+                    .pair_address(alpha.amplitude_string, beta.amplitude_string)
+                else {
+                    continue;
+                };
                 let amplitude_index = self.amplitude_by_determinant[amplitude_determinant].ok_or(
                     ClusterError::MissingAmplitude {
                         determinant: amplitude_determinant,
@@ -156,7 +148,12 @@ impl<'a> ClusterExpansionPlan<'a> {
                 if amplitude == 0.0 {
                     continue;
                 }
-                let source = alpha.source_string * beta_count + beta.source_string;
+                let Some(source) = self
+                    .basis
+                    .pair_address(alpha.source_string, beta.source_string)
+                else {
+                    continue;
+                };
                 let phase = alpha.phase * beta.phase;
                 coefficient +=
                     amplitude_rank as f64 * amplitude * wavefunction[source] * f64::from(phase);
@@ -412,6 +409,34 @@ mod tests {
                     max_error(&actual, &expected)
                 );
             }
+        }
+    }
+
+    #[test]
+    fn ranked_expansion_matches_taylor_in_a_compact_symmetry_sector() {
+        let basis = DeterminantBasis::with_symmetry(4, 4, 0, &[1, 2, 1, 2], 1).unwrap();
+        assert!(basis.len() < basis.alpha_strings.len() * basis.beta_strings.len());
+        let reference = hartree_fock_reference(4, basis.nalpha, basis.nbeta);
+        for max_rank in 1..=basis.nalpha + basis.nbeta {
+            let space = ExcitationSpace::new(&basis, reference, max_rank).unwrap();
+            let amplitudes = Amplitudes {
+                values: (0..space.excitations.len())
+                    .map(|index| (index as f64 + 1.0) * 1e-4)
+                    .collect(),
+            };
+            let expected = ClusterOperator::new(&basis, &space, &amplitudes)
+                .unwrap()
+                .exponential_on_reference(1e-15)
+                .unwrap();
+            let actual = ClusterExpansionPlan::new(&basis, &space)
+                .unwrap()
+                .exponential_on_reference(&amplitudes)
+                .unwrap();
+            assert!(
+                max_error(&actual, &expected) < 1e-12,
+                "rank={max_rank}, error={}",
+                max_error(&actual, &expected)
+            );
         }
     }
 

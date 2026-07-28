@@ -29,7 +29,7 @@ pub struct UnitaryCcModel<'a> {
 impl<'a> UnitaryCcModel<'a> {
     pub fn new(operator: &'a DirectFciOperator, rank: usize) -> Result<Self, UnitaryCcError> {
         let problem = operator.problem();
-        let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+        let basis = DeterminantBasis::from_problem(problem)?;
         let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
         let space = ExcitationSpace::new(&basis, reference, rank)?;
         Ok(Self {

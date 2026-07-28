@@ -84,7 +84,7 @@ pub fn solve_cc(
     config: &CcConfig,
 ) -> Result<CcResult, CcError> {
     let problem = operator.problem();
-    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    let basis = DeterminantBasis::from_problem(problem)?;
     validate_rank(rank, &basis)?;
     let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
     let space = ExcitationSpace::new(&basis, reference, rank)?;
@@ -98,7 +98,7 @@ pub fn solve_cc_series(
     config: &CcConfig,
 ) -> Result<Vec<CcSeriesEntry>, CcError> {
     let problem = operator.problem();
-    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    let basis = DeterminantBasis::from_problem(problem)?;
     validate_rank(max_rank, &basis)?;
     if orbital_energies.len() != problem.norb {
         return Err(CcError::OrbitalEnergyLength {

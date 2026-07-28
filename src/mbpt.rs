@@ -36,7 +36,7 @@ pub fn solve_mbpt(
             expected: problem.norb,
         });
     }
-    let basis = DeterminantBasis::new(problem.norb, problem.nelec, problem.ms2)?;
+    let basis = DeterminantBasis::from_problem(problem)?;
     let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
     let reference_index = basis
         .address(reference)

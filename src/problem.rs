@@ -7,6 +7,10 @@ pub struct ElectronicProblem {
     pub norb: usize,
     pub nelec: usize,
     pub ms2: isize,
+    /// Molpro-style one-based Abelian irrep labels for the spatial orbitals.
+    pub orbsym: Vec<usize>,
+    /// Molpro-style one-based target irrep for the many-electron state.
+    pub isym: usize,
     pub ecore: f64,
     h1: Vec<f64>,
     eri: Vec<f64>,
@@ -25,6 +29,12 @@ pub enum ProblemError {
     OneBodyLength { actual: usize, expected: usize },
     #[error("two-electron integral length is {actual}, expected {expected}")]
     TwoBodyLength { actual: usize, expected: usize },
+    #[error("ORBSYM contains {actual} labels, expected NORB={expected}")]
+    OrbitalSymmetryLength { actual: usize, expected: usize },
+    #[error("ORBSYM[{orbital}]={irrep} is outside the Molpro range 1..=8")]
+    InvalidOrbitalSymmetry { orbital: usize, irrep: usize },
+    #[error("ISYM={0} is outside the Molpro range 1..=8")]
+    InvalidWavefunctionSymmetry(usize),
     #[error("integrals and core energy must be finite")]
     NonFinite,
 }
@@ -70,6 +80,8 @@ impl ElectronicProblem {
             norb,
             nelec,
             ms2,
+            orbsym: vec![1; norb],
+            isym: 1,
             ecore,
             h1,
             eri,
@@ -90,7 +102,8 @@ impl ElectronicProblem {
                 }
             }
         }
-        Self::new(dump.norb, dump.nelec, dump.ms2, dump.ecore, h1, eri)
+        Self::new(dump.norb, dump.nelec, dump.ms2, dump.ecore, h1, eri)?
+            .with_symmetry(dump.orbsym.clone(), dump.isym)
     }
 
     pub fn h1(&self, p: usize, q: usize) -> f64 {
@@ -113,6 +126,28 @@ impl ElectronicProblem {
         self.orbital_energies = Some(energies);
         self
     }
+
+    pub fn with_symmetry(mut self, orbsym: Vec<usize>, isym: usize) -> Result<Self, ProblemError> {
+        if orbsym.len() != self.norb {
+            return Err(ProblemError::OrbitalSymmetryLength {
+                actual: orbsym.len(),
+                expected: self.norb,
+            });
+        }
+        if let Some((orbital, &irrep)) = orbsym
+            .iter()
+            .enumerate()
+            .find(|(_, irrep)| !(1..=8).contains(*irrep))
+        {
+            return Err(ProblemError::InvalidOrbitalSymmetry { orbital, irrep });
+        }
+        if !(1..=8).contains(&isym) {
+            return Err(ProblemError::InvalidWavefunctionSymmetry(isym));
+        }
+        self.orbsym = orbsym;
+        self.isym = isym;
+        Ok(self)
+    }
 }
 
 pub(crate) fn index4(n: usize, p: usize, q: usize, r: usize, s: usize) -> usize {
@@ -132,6 +167,28 @@ mod tests {
         assert!(matches!(
             ElectronicProblem::new(2, 2, 0, 0.0, vec![0.0; 3], vec![0.0; 16]),
             Err(ProblemError::OneBodyLength { .. })
+        ));
+    }
+
+    #[test]
+    fn validates_molpro_symmetry_metadata() {
+        let problem = ElectronicProblem::new(2, 2, 0, 0.0, vec![0.0; 4], vec![0.0; 16])
+            .unwrap()
+            .with_symmetry(vec![1, 4], 1)
+            .unwrap();
+        assert_eq!(problem.orbsym, vec![1, 4]);
+        assert_eq!(problem.isym, 1);
+        assert!(matches!(
+            problem.clone().with_symmetry(vec![1], 1),
+            Err(ProblemError::OrbitalSymmetryLength { .. })
+        ));
+        assert!(matches!(
+            problem.clone().with_symmetry(vec![1, 9], 1),
+            Err(ProblemError::InvalidOrbitalSymmetry { .. })
+        ));
+        assert!(matches!(
+            problem.with_symmetry(vec![1, 4], 0),
+            Err(ProblemError::InvalidWavefunctionSymmetry(0))
         ));
     }
 }

@@ -167,16 +167,24 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Command::Inspect { fcidump } => {
             let bytes = fs::read(&fcidump)?;
             let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
-            let basis = DeterminantBasis::new(dump.norb, dump.nelec, dump.ms2)?;
+            let basis = DeterminantBasis::with_symmetry(
+                dump.norb,
+                dump.nelec,
+                dump.ms2,
+                &dump.orbsym,
+                dump.isym,
+            )?;
             println!("NORB: {}", dump.norb);
             println!("NELEC: {}", dump.nelec);
             println!("MS2: {}", dump.ms2);
+            println!("ORBSYM: {:?}", dump.orbsym);
+            println!("ISYM: {}", dump.isym);
             println!("ECORE: {:.16}", dump.ecore);
             println!("one-electron records: {}", dump.one_body_record_count());
             println!("two-electron records: {}", dump.two_body_record_count());
             println!("alpha strings: {}", basis.alpha_strings.len());
             println!("beta strings: {}", basis.beta_strings.len());
-            println!("determinants: {}", basis.len());
+            println!("determinants: {} (ISYM={} sector)", basis.len(), dump.isym);
         }
         Command::DenseFci { fcidump } => {
             let bytes = fs::read(&fcidump)?;

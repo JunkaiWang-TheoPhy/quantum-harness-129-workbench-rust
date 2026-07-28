@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::determinant::DeterminantBasis;
+use crate::determinant::{DeterminantBasis, DeterminantError};
 use crate::operator::{LinearOperator, OperatorError};
 use crate::problem::{ElectronicProblem, index4};
 use crate::strings::{OneBodyLink, StringSpace, StringSpaceError};
@@ -8,6 +8,7 @@ use crate::strings::{OneBodyLink, StringSpace, StringSpaceError};
 #[derive(Debug)]
 pub struct DirectFciOperator {
     problem: ElectronicProblem,
+    basis: DeterminantBasis,
     pub alpha: StringSpace,
     pub beta: StringSpace,
     effective_eri: Vec<f64>,
@@ -20,6 +21,8 @@ pub enum DirectFciError {
     InvalidSpin,
     #[error(transparent)]
     Strings(#[from] StringSpaceError),
+    #[error(transparent)]
+    Determinants(#[from] DeterminantError),
 }
 
 impl DirectFciOperator {
@@ -31,10 +34,12 @@ impl DirectFciOperator {
         }
         let alpha = StringSpace::new(problem.norb, (nalpha_twice / 2) as usize)?;
         let beta = StringSpace::new(problem.norb, (nbeta_twice / 2) as usize)?;
+        let basis = DeterminantBasis::from_problem(&problem)?;
         let effective_eri = absorb_one_body(&problem);
-        let diagonal = hamiltonian_diagonal(&problem, &alpha, &beta);
+        let diagonal = hamiltonian_diagonal(&problem, &alpha, &beta, &basis);
         Ok(Self {
             problem,
+            basis,
             alpha,
             beta,
             effective_eri,
@@ -44,6 +49,10 @@ impl DirectFciOperator {
 
     pub fn problem(&self) -> &ElectronicProblem {
         &self.problem
+    }
+
+    pub fn basis(&self) -> &DeterminantBasis {
+        &self.basis
     }
 
     fn g(&self, p: usize, q: usize, r: usize, s: usize) -> f64 {
@@ -71,7 +80,7 @@ impl DirectFciOperator {
 
 impl LinearOperator for DirectFciOperator {
     fn dimension(&self) -> usize {
-        self.alpha.len() * self.beta.len()
+        self.basis.len()
     }
 
     fn diagonal(&self) -> &[f64] {
@@ -93,33 +102,36 @@ impl LinearOperator for DirectFciOperator {
             });
         }
         output.fill(0.0);
-        let nb = self.beta.len();
-        for alpha_source in 0..self.alpha.len() {
-            for beta_source in 0..nb {
-                let source = alpha_source * nb + beta_source;
-                let coefficient = input[source];
-                if coefficient == 0.0 {
-                    continue;
-                }
-                output[source] += self.problem.ecore * coefficient;
+        for (source, &(alpha_source, beta_source)) in self.basis.string_pairs().iter().enumerate() {
+            let coefficient = input[source];
+            if coefficient == 0.0 {
+                continue;
+            }
+            output[source] += self.problem.ecore * coefficient;
 
-                for first in self.alpha.outgoing(alpha_source) {
-                    for second in self.alpha.outgoing(first.target) {
-                        let destination = second.target * nb + beta_source;
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                    for second in self.beta.outgoing(beta_source) {
-                        let destination = first.target * nb + second.target;
+            for first in self.alpha.outgoing(alpha_source) {
+                for second in self.alpha.outgoing(first.target) {
+                    if let Some(destination) = self.basis.pair_address(second.target, beta_source) {
                         self.add_link_pair(coefficient, first, second, destination, output);
                     }
                 }
-                for first in self.beta.outgoing(beta_source) {
-                    for second in self.alpha.outgoing(alpha_source) {
-                        let destination = second.target * nb + first.target;
+                for second in self.beta.outgoing(beta_source) {
+                    if let Some(destination) = self.basis.pair_address(first.target, second.target)
+                    {
                         self.add_link_pair(coefficient, first, second, destination, output);
                     }
-                    for second in self.beta.outgoing(first.target) {
-                        let destination = alpha_source * nb + second.target;
+                }
+            }
+            for first in self.beta.outgoing(beta_source) {
+                for second in self.alpha.outgoing(alpha_source) {
+                    if let Some(destination) = self.basis.pair_address(second.target, first.target)
+                    {
+                        self.add_link_pair(coefficient, first, second, destination, output);
+                    }
+                }
+                for second in self.beta.outgoing(first.target) {
+                    if let Some(destination) = self.basis.pair_address(alpha_source, second.target)
+                    {
                         self.add_link_pair(coefficient, first, second, destination, output);
                     }
                 }
@@ -160,52 +172,48 @@ fn hamiltonian_diagonal(
     problem: &ElectronicProblem,
     alpha: &StringSpace,
     beta: &StringSpace,
+    basis: &DeterminantBasis,
 ) -> Vec<f64> {
-    let mut result = Vec::with_capacity(alpha.len() * beta.len());
-    for &alpha_bits in &alpha.strings {
-        for &beta_bits in &beta.strings {
-            let mut energy = problem.ecore;
-            for spin in 0..2 {
-                let bits = if spin == 0 { alpha_bits } else { beta_bits };
-                for i in 0..problem.norb {
-                    if bits & (1_u64 << i) != 0 {
-                        energy += problem.h1(i, i);
-                    }
+    let mut result = Vec::with_capacity(basis.len());
+    for &(alpha_index, beta_index) in basis.string_pairs() {
+        let alpha_bits = alpha.strings[alpha_index];
+        let beta_bits = beta.strings[beta_index];
+        let mut energy = problem.ecore;
+        for spin in 0..2 {
+            let bits = if spin == 0 { alpha_bits } else { beta_bits };
+            for i in 0..problem.norb {
+                if bits & (1_u64 << i) != 0 {
+                    energy += problem.h1(i, i);
                 }
             }
-            for spin_i in 0..2 {
-                let bits_i = if spin_i == 0 { alpha_bits } else { beta_bits };
-                for i in 0..problem.norb {
-                    if bits_i & (1_u64 << i) == 0 {
-                        continue;
-                    }
-                    for spin_j in 0..2 {
-                        let bits_j = if spin_j == 0 { alpha_bits } else { beta_bits };
-                        for j in 0..problem.norb {
-                            if bits_j & (1_u64 << j) == 0 {
-                                continue;
-                            }
-                            energy += 0.5 * problem.eri(i, i, j, j);
-                            if spin_i == spin_j {
-                                energy -= 0.5 * problem.eri(i, j, j, i);
-                            }
+        }
+        for spin_i in 0..2 {
+            let bits_i = if spin_i == 0 { alpha_bits } else { beta_bits };
+            for i in 0..problem.norb {
+                if bits_i & (1_u64 << i) == 0 {
+                    continue;
+                }
+                for spin_j in 0..2 {
+                    let bits_j = if spin_j == 0 { alpha_bits } else { beta_bits };
+                    for j in 0..problem.norb {
+                        if bits_j & (1_u64 << j) == 0 {
+                            continue;
+                        }
+                        energy += 0.5 * problem.eri(i, i, j, j);
+                        if spin_i == spin_j {
+                            energy -= 0.5 * problem.eri(i, j, j, i);
                         }
                     }
                 }
             }
-            result.push(energy);
         }
+        result.push(energy);
     }
     result
 }
 
 pub fn determinant_basis(operator: &DirectFciOperator) -> DeterminantBasis {
-    DeterminantBasis::new(
-        operator.problem.norb,
-        operator.problem.nelec,
-        operator.problem.ms2,
-    )
-    .expect("validated direct-FCI problem must define a determinant basis")
+    operator.basis.clone()
 }
 
 #[cfg(test)]
@@ -253,5 +261,37 @@ mod tests {
     #[test]
     fn h4_direct_sigma_matches_dense() {
         compare_fixture("h4-sto3g");
+    }
+
+    #[test]
+    fn symmetry_block_sigma_matches_the_projected_dense_hamiltonian() {
+        let dump = Fcidump::parse(
+            "&FCI NORB=2,NELEC=2,MS2=0,\n\
+             ORBSYM=1,2,\n\
+             ISYM=1,\n\
+             &END\n\
+             0.7 1 1 1 1\n\
+             0.2 2 2 2 2\n\
+             0.1 1 1 2 2\n\
+             -1.0 1 1 0 0\n\
+             -0.5 2 2 0 0\n",
+        )
+        .unwrap();
+        let operator =
+            DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump).unwrap()).unwrap();
+        assert_eq!(operator.alpha.len() * operator.beta.len(), 4);
+        assert_eq!(operator.dimension(), 2);
+
+        let input = vec![0.3, -0.4];
+        let mut direct = vec![0.0; 2];
+        operator.apply(&input, &mut direct).unwrap();
+        let dense = build_dense_hamiltonian(&dump, operator.basis());
+        let expected = dense * DVector::from_vec(input);
+        assert!(
+            direct
+                .iter()
+                .zip(expected.iter())
+                .all(|(actual, expected)| (actual - expected).abs() < 1e-12)
+        );
     }
 }
