@@ -1,7 +1,7 @@
 # Rewrite It In Rust! — Electronic Structure All the Way to CC(8)
 
 [![CI](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 **245,025 determinants. Direct Davidson FCI. Arbitrary-order CC. Direct
@@ -53,6 +53,20 @@ The production algorithms run in Rust:
 PySCF is the independent oracle and fixture generator. It is used to challenge
 the Rust implementation with known answers—not to execute the checked
 production path.
+
+## Post-Challenge Hardening
+
+The validated challenge results are now a stable numerical floor rather than
+the end of the engineering work. v0.2 adds:
+
+- checked occupied/virtual active-space selection with both orbital maps;
+- exact checked combinadic count, rank, and inverse-rank operations;
+- explicit CC termination and non-finite-state diagnostics;
+- schema-versioned `cc-series --json-output` evidence.
+
+The established `freeze_core`, direct-FCI, Davidson, and CC commands remain
+compatible. The Hamiltonian and every committed published comparison are
+unchanged. See the [v0.2.0 release notes](docs/release-notes-v0.2.0.md).
 
 ## The Mission Is Complete
 
@@ -337,6 +351,8 @@ active interpreter rather than `.venv`.
   reporting.
 - [Submission PR body](docs/submission-pr-body.md) — version-controlled source
   for the upstream solution PR description.
+- [v0.2.0 release notes](docs/release-notes-v0.2.0.md) — active-space,
+  combinadic, and CC diagnostic hardening.
 - [v0.1.0 release notes](docs/release-notes-v0.1.0.md) — immutable inputs,
   headline values, verification commands, and release scope.
 - [Sync log](docs/sync-log.md) — relationship between this workbench and the

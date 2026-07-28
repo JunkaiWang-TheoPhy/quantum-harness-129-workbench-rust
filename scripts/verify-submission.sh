@@ -69,4 +69,22 @@ if [[ ! -x "$python_bin" ]] && ! command -v "$python_bin" >/dev/null 2>&1; then
 fi
 "$python_bin" -m unittest scripts.oracle.test_units -v
 
+verification_tmp=$(mktemp -d)
+trap 'rm -rf -- "$verification_tmp"' EXIT
+cargo run --quiet --locked -- cc-series \
+  fixtures/h4-sto3g/FCIDUMP \
+  fixtures/h4-sto3g/reference.json \
+  --max-rank 2 \
+  --residual-tolerance 1e-8 \
+  --json-output "$verification_tmp/h4-cc-series.json" >/dev/null
+jq -e '
+  .schema_version == 1 and
+  .artifact_kind == "cc-series" and
+  .energy_unit == "hartree" and
+  (.results | length) == 2 and
+  ([.results[].rank] == [1, 2]) and
+  ([.results[].termination] == ["converged", "converged"]) and
+  ([.results[].converged] | all)
+' "$verification_tmp/h4-cc-series.json" >/dev/null
+
 git diff --check
