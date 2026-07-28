@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
+use crate::combinadic::{CombinadicError, combination_count, unrank_occupation};
+
 #[derive(Debug, Error)]
 pub enum DeterminantError {
     #[error("the Level 0 u64 representation supports at most 32 spatial orbitals")]
@@ -10,6 +12,12 @@ pub enum DeterminantError {
     InvalidElectronCount { nelec: usize, ms2: isize },
     #[error("requested {electrons} electrons in only {orbitals} orbitals")]
     TooManyElectrons { electrons: usize, orbitals: usize },
+    #[error("determinant space contains {count} entries and does not fit this platform")]
+    SpaceTooLarge { count: u128 },
+    #[error("failed to allocate determinant space with {count} entries")]
+    AllocationFailed { count: usize },
+    #[error(transparent)]
+    Combinadic(#[from] CombinadicError),
 }
 
 #[derive(Debug, Clone)]
@@ -37,7 +45,18 @@ impl DeterminantBasis {
         let nbeta = (nbeta_twice / 2) as usize;
         let alpha_strings = occupation_strings(norb, nalpha)?;
         let beta_strings = occupation_strings(norb, nbeta)?;
-        let mut determinants = Vec::with_capacity(alpha_strings.len() * beta_strings.len());
+        let determinant_count = alpha_strings
+            .len()
+            .checked_mul(beta_strings.len())
+            .ok_or(DeterminantError::SpaceTooLarge {
+                count: alpha_strings.len() as u128 * beta_strings.len() as u128,
+            })?;
+        let mut determinants = Vec::new();
+        determinants
+            .try_reserve_exact(determinant_count)
+            .map_err(|_| DeterminantError::AllocationFailed {
+                count: determinant_count,
+            })?;
         for &alpha in &alpha_strings {
             for &beta in &beta_strings {
                 determinants.push(alpha | (beta << norb));
@@ -79,14 +98,22 @@ pub fn occupation_strings(orbitals: usize, electrons: usize) -> Result<Vec<u64>,
             orbitals,
         });
     }
-    let limit = if orbitals == 64 {
-        u64::MAX
-    } else {
-        1_u64 << orbitals
-    };
-    Ok((0..limit)
-        .filter(|bits| bits.count_ones() as usize == electrons)
-        .collect())
+    if orbitals > 64 {
+        return Err(DeterminantError::TooManyOrbitals);
+    }
+    let count_u128 = combination_count(orbitals, electrons)?;
+    let count =
+        usize::try_from(count_u128).map_err(|_| DeterminantError::SpaceTooLarge {
+            count: count_u128,
+        })?;
+    let mut strings = Vec::new();
+    strings
+        .try_reserve_exact(count)
+        .map_err(|_| DeterminantError::AllocationFailed { count })?;
+    for rank in 0..count {
+        strings.push(unrank_occupation(rank as u128, orbitals, electrons)?);
+    }
+    Ok(strings)
 }
 
 pub fn apply_annihilation(determinant: u64, orbital: usize) -> Option<(u64, f64)> {

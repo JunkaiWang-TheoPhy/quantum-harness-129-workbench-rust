@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
+use crate::combinadic::rank_occupation;
 use crate::determinant::{apply_annihilation, apply_creation, occupation_strings};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,18 +78,9 @@ impl StringSpace {
     }
 
     pub fn rank(&self, bits: u64) -> Option<usize> {
-        if bits.count_ones() as usize != self.nelec || bits >> self.norb != 0 {
-            return None;
-        }
-        let mut rank = 0_usize;
-        let mut occupied_index = 1_usize;
-        for orbital in 0..self.norb {
-            if bits & (1_u64 << orbital) != 0 {
-                rank += binomial(orbital, occupied_index);
-                occupied_index += 1;
-            }
-        }
-        Some(rank)
+        rank_occupation(bits, self.norb, self.nelec)
+            .ok()
+            .and_then(|rank| usize::try_from(rank).ok())
     }
 
     pub fn unrank(&self, rank: usize) -> Option<u64> {
@@ -110,14 +102,6 @@ impl StringSpace {
     pub fn is_empty(&self) -> bool {
         self.strings.is_empty()
     }
-}
-
-fn binomial(n: usize, k: usize) -> usize {
-    if k > n {
-        return 0;
-    }
-    let k = k.min(n - k);
-    (0..k).fold(1_usize, |value, index| value * (n - index) / (index + 1))
 }
 
 #[cfg(test)]
