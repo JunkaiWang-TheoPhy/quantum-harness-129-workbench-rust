@@ -396,7 +396,11 @@ impl LinearOperator for DirectFciOperator {
     }
 
     fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<(), OperatorError> {
-        self.apply_with_report(input, output)?;
+        self.validate_vectors(input, output)?;
+        match self.execution.effective_mode {
+            ExecutionMode::Serial => self.apply_serial(input, output),
+            ExecutionMode::Parallel => self.apply_parallel(input, output),
+        }
         Ok(())
     }
 }
