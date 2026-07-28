@@ -90,14 +90,14 @@ pub struct BoundedBenchmarkResult {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BoundedBenchmarkConfig {
     pub sources: usize,
-    pub max_memory_gib: f64,
+    pub memory_budget_gib: f64,
 }
 
 impl Default for BoundedBenchmarkConfig {
     fn default() -> Self {
         Self {
             sources: 16,
-            max_memory_gib: 2.0,
+            memory_budget_gib: 2.0,
         }
     }
 }
@@ -295,7 +295,7 @@ pub fn run_h2o_cc_pvdz_benchmark(
     }
     let space = FciSpaceEstimate::new(24, 10, 0)?;
     let bounded_memory = KernelMemoryEstimate::new(&space)?;
-    let memory_budget_bytes = gibibytes_to_bytes(config.max_memory_gib)?;
+    let memory_budget_bytes = gibibytes_to_bytes(config.memory_budget_gib)?;
     bounded_memory.enforce_budget(memory_budget_bytes)?;
     let dimension =
         usize::try_from(space.determinants).map_err(|_| BenchmarkError::CountOverflow)?;

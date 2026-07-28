@@ -48,6 +48,20 @@ jq -e '
   .rhf_absolute_error < 1e-8
 ' "$benchmark_json" >/dev/null
 
+benchmark_summary_json=fixtures/h2o-ccpvdz-ae/benchmark-m4-summary.json
+jq -e '
+  .schema_version == 1 and
+  .artifact_kind == "h2o-ccpvdz-five-process-summary" and
+  .measured_commit == "025a6dd27836f2e9011ef63ee35630a667bdd786" and
+  .measured_release == "v0.1.1" and
+  .determinants == 1806590016 and
+  .sources_per_run == 16 and
+  .raw_contributions_per_run == 640016 and
+  (.runs | length) == 5 and
+  .aggregate.maximum_peak_rss_bytes == 468975616 and
+  .aggregate.maximum_peak_rss_bytes < 2147483648
+' "$benchmark_summary_json" >/dev/null
+
 python_bin=${PYTHON:-.venv/bin/python}
 if [[ ! -x "$python_bin" ]] && ! command -v "$python_bin" >/dev/null 2>&1; then
   printf 'Python oracle environment not found: %s\n' "$python_bin" >&2

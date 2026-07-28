@@ -268,13 +268,20 @@ not allocate full vectors or claim a converged cc-pVDZ FCI energy.
 ```bash
 cargo run --release -- benchmark h2o-cc-pvdz \
   --sources 16 \
-  --max-memory-gib 2 \
+  --memory-budget-gib 2 \
   --json-output fixtures/h2o-ccpvdz-ae/benchmark-m4.json
 ```
 
 See the
 [full benchmark report](reports/h2o-ccpvdz-all-electron-benchmark.md) and
-[machine-readable run](fixtures/h2o-ccpvdz-ae/benchmark-m4.json).
+[machine-readable run](fixtures/h2o-ccpvdz-ae/benchmark-m4.json). The
+[five-process summary](fixtures/h2o-ccpvdz-ae/benchmark-m4-summary.json)
+records every raw timing and RSS observation plus aggregates that are
+recomputed in the test suite.
+
+`--memory-budget-gib` is a conservative preflight estimate, not an
+operating-system hard memory limit. The v0.1.1 spelling
+`--max-memory-gib` remains a supported alias.
 
 The required ecosystem findings are recorded in
 [reports/tenferro-gap-list.md](reports/tenferro-gap-list.md). tenferro-rs 0.2.0

@@ -130,8 +130,13 @@ enum Command {
         system: BenchmarkSystem,
         #[arg(long, default_value_t = 16)]
         sources: usize,
-        #[arg(long, default_value_t = 2.0)]
-        max_memory_gib: f64,
+        #[arg(
+            long = "memory-budget-gib",
+            visible_alias = "max-memory-gib",
+            default_value_t = 2.0,
+            help = "not an operating-system hard memory limit; rejects conservative estimates above this GiB budget"
+        )]
+        memory_budget_gib: f64,
         #[arg(long)]
         json_output: Option<PathBuf>,
     },
@@ -664,13 +669,13 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Command::Benchmark {
             system,
             sources,
-            max_memory_gib,
+            memory_budget_gib,
             json_output,
         } => {
             let result = match system {
                 BenchmarkSystem::H2oCcPvdz => run_h2o_cc_pvdz_benchmark(BoundedBenchmarkConfig {
                     sources,
-                    max_memory_gib,
+                    memory_budget_gib,
                 })?,
             };
             print_benchmark_result(&result);

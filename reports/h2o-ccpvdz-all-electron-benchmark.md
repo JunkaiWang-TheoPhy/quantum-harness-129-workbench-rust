@@ -101,7 +101,10 @@ fresh process using the same command and input.
 The committed
 [`benchmark-m4.json`](../fixtures/h2o-ccpvdz-ae/benchmark-m4.json) is one
 complete machine-readable run. The table reports all five independent
-measurements instead of selecting the fastest run.
+measurements instead of selecting the fastest run. The
+[`benchmark-m4-summary.json`](../fixtures/h2o-ccpvdz-ae/benchmark-m4-summary.json)
+artifact records all five raw observations and aggregates in machine-readable
+form; integration tests recompute every stored median and maximum.
 
 ## Environment
 
@@ -127,9 +130,13 @@ cargo build --release
 
 /usr/bin/time -l target/release/ed_workbench_rs benchmark h2o-cc-pvdz \
   --sources 16 \
-  --max-memory-gib 2 \
+  --memory-budget-gib 2 \
   --json-output fixtures/h2o-ccpvdz-ae/benchmark-m4.json
 ```
+
+`--memory-budget-gib` rejects the run when the conservative preflight estimate
+exceeds the selected budget. It is not an operating-system hard memory limit.
+The v0.1.1 option name `--max-memory-gib` remains a compatibility alias.
 
 Regenerate only the independent PySCF RHF/space reference:
 
@@ -146,7 +153,7 @@ tables:
 ```bash
 target/release/ed_workbench_rs benchmark h2o-cc-pvdz \
   --sources 1 \
-  --max-memory-gib 0.5
+  --memory-budget-gib 0.5
 ```
 
 It exits with an estimate-exceeds-budget error.
