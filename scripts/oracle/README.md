@@ -54,6 +54,19 @@ for the Rust calculations. Before replacing any committed primary fixture,
 require the generated FCIDUMP checksum and every numerical reference field to
 match or document and review the platform-dependent difference.
 
+The stretched primary Hamiltonians can be regenerated together with:
+
+```bash
+uv run --frozen python scripts/oracle/generate.py \
+  h2o-631g-fc-r1p5 h2o-631g-fc-r2p0
+```
+
+They uniformly scale both equilibrium O–H vectors by 1.5 and 2.0 while
+preserving the 107.6° H–O–H angle. Their O–H distances are 1.4505 Å and
+1.934 Å. PySCF CCSD is allowed up to 200 iterations because stretched-bond
+references need more than the default 50 iterations to satisfy the
+1 × 10⁻¹² Hartree convergence threshold.
+
 The extended all-electron H2O/DZ fixture can be regenerated with:
 
 ```bash

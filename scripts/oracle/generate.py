@@ -127,6 +127,38 @@ SYSTEMS = {
         ),
         frozen_orbitals=(0,),
     ),
+    "h2o-631g-fc-r1p5": System(
+        slug="h2o-631g-fc-r1p5",
+        name="H2O frozen core at 1.5 times the equilibrium bond length",
+        # Both O-H vectors are scaled by 1.5; the 107.6 degree angle is fixed.
+        atom=(
+            "O 0 0 0; H 1.4505 0 0; "
+            "H -0.43858752653351970 1.38260306363366970 0"
+        ),
+        basis="6-31g",
+        geometry_parameters=(
+            ("R(O-H)", 1.4505, "angstrom"),
+            ("angle(H-O-H)", 107.6, "degree"),
+            ("R/R(e)", 1.5, "dimensionless"),
+        ),
+        frozen_orbitals=(0,),
+    ),
+    "h2o-631g-fc-r2p0": System(
+        slug="h2o-631g-fc-r2p0",
+        name="H2O frozen core at 2.0 times the equilibrium bond length",
+        # Both O-H vectors are scaled by 2.0; the 107.6 degree angle is fixed.
+        atom=(
+            "O 0 0 0; H 1.9340 0 0; "
+            "H -0.58478336871135960 1.84347075151155960 0"
+        ),
+        basis="6-31g",
+        geometry_parameters=(
+            ("R(O-H)", 1.934, "angstrom"),
+            ("angle(H-O-H)", 107.6, "degree"),
+            ("R/R(e)", 2.0, "dimensionless"),
+        ),
+        frozen_orbitals=(0,),
+    ),
     "h2o-dz-ae": System(
         slug="h2o-dz-ae",
         name="H2O Bauschlicher DZ all-electron",
@@ -240,6 +272,8 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
 
     ccsd = cc.CCSD(mf, frozen=list(frozen) or None)
     ccsd.conv_tol = 1e-12
+    # Stretched bonds need more than PySCF's default 50 CCSD iterations.
+    ccsd.max_cycle = 200
     correlation_energy, _, _ = ccsd.kernel()
     ccsd_total_energy = hf_energy + float(correlation_energy)
     mp2 = mp.MP2(mf, frozen=list(frozen) or None)

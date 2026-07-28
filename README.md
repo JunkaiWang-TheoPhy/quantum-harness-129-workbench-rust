@@ -66,6 +66,9 @@ finite Taylor expansion remains as an independent small-system oracle.
   Table 2 at the six decimals printed by the paper.
 - CI(1)-CI(8) and MBPT(1)-MBPT(20) match all 28 corresponding Table 2
   entries.
+- Independent 1.5 Rₑ and 2.0 Rₑ Hamiltonians converge through CC(8); Rust
+  Davidson FCI agrees with PySCF within 2 × 10⁻¹² Hartree at both stretched
+  geometries.
 - The Level 0 oracle, mandatory Levels 1-2, stretch Levels 3-4, tenferro gap
   list, machine-readable evidence, and upstream reproduction materials are
   committed.
@@ -99,6 +102,15 @@ Reproduce the all-electron H2O/DZ extension:
 ```bash
 cargo run --release -- davidson fixtures/h2o-dz-ae/FCIDUMP \
   --residual-tolerance 1e-7 --max-iterations 40 --max-subspace 20
+```
+
+Reproduce the 2.0 Rₑ stretched-water CC sequence:
+
+```bash
+cargo run --release -- cc-series \
+  fixtures/h2o-631g-fc-r2p0/FCIDUMP \
+  fixtures/h2o-631g-fc-r2p0/reference.json \
+  --max-rank 8 --residual-tolerance 1e-6 --max-iterations 100
 ```
 
 Run every normal submission gate:
@@ -253,6 +265,8 @@ The equilibrium H2 fixture has `R(H-H)=0.7414 Å`. The original stretched-H2
 fixture uses `z=-0.7 Å` and `z=+0.7 Å`, so its bond length is
 `R(H-H)=1.4 Å`—not `0.7 Å`. Linear H4 has `1.0 Å` adjacent spacing. Both
 water fixtures use `R(O-H)=0.967 Å` and `angle(H-O-H)=107.6°`.
+The two stretched-water fixtures preserve the 107.6° angle and set both O–H
+distances to 1.4505 Å and 1.934 Å, respectively.
 
 ```bash
 cargo run --release -- rhf h2o-sto3g
@@ -335,6 +349,8 @@ active interpreter rather than `.venv`.
   pipeline and element-level PySCF comparisons.
 - [Extended H2O/DZ report](reports/extended-h2o-dz.md) — exact historical
   basis/geometry reproduction and million-determinant all-electron FCI.
+- [Stretched-water report](reports/stretched-water.md) — independent
+  Davidson FCI and CC(1)-CC(8) checks at 1.5 Rₑ and 2.0 Rₑ.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 

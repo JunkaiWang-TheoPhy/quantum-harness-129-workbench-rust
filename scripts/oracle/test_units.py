@@ -85,6 +85,25 @@ class GeometryUnitTests(unittest.TestCase):
                 ),
             )
 
+    def test_stretched_water_scales_both_bonds_and_preserves_the_angle(self) -> None:
+        for slug, scale in (
+            ("h2o-631g-fc-r1p5", 1.5),
+            ("h2o-631g-fc-r2p0", 2.0),
+        ):
+            system, coordinates = self.molecule(slug)
+            first_bond = coordinates[1] - coordinates[0]
+            second_bond = coordinates[2] - coordinates[0]
+            first_length = numpy.linalg.norm(first_bond)
+            second_length = numpy.linalg.norm(second_bond)
+            cosine = numpy.dot(first_bond, second_bond) / (
+                first_length * second_length
+            )
+            angle_degrees = numpy.degrees(numpy.arccos(cosine))
+            self.assertAlmostEqual(first_length, scale * 0.967, places=12)
+            self.assertAlmostEqual(second_length, scale * 0.967, places=12)
+            self.assertAlmostEqual(angle_degrees, 107.6, places=12)
+            self.assertEqual(system.frozen_orbitals, (0,))
+
     def test_committed_references_expose_units_and_geometry_parameters(self) -> None:
         fixtures_root = Path(__file__).resolve().parents[2] / "fixtures"
         for slug, system in SYSTEMS.items():

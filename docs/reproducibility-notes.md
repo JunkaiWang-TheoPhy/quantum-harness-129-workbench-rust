@@ -21,14 +21,19 @@ It does not replace the cited papers or official API documentation.
 - The stretched-H2 fixture uses positions `-0.7` and `+0.7` Angstrom, which
   means `R(H-H)=1.4 Angstrom`.
 - Linear H4 has `1.0 Angstrom` between adjacent atoms.
-- Both water fixtures use `R(O-H)=0.967 Angstrom` and
-  `HOH=107.6 degrees`.
+- The equilibrium water fixtures use an O–H distance of 0.967 Angstrom and
+  an H–O–H angle of 107.6 degrees.
+- The stretched 6-31G frozen-core fixtures preserve the 107.6 degree angle
+  and use O–H distances of 1.4505 Angstrom and 1.934 Angstrom.
 - Energies, orbital energies, nuclear repulsion, and energy-valued integrals
   are in Hartree. AO overlap, MO coefficients, and CI/CC amplitudes are
   dimensionless.
 
 Extended targets:
 
+- Water/6-31G with frozen oxygen 1s at 1.5 and 2.0 times the equilibrium O–H
+  distance. Both Davidson FCI and CC(1)-CC(8) are reproduced and documented
+  in `reports/stretched-water.md`.
 - Water/DZ, all electrons: `-76.156699 hartree`. This target is now
   reproduced in `fixtures/h2o-dz-ae` and documented in
   `reports/extended-h2o-dz.md`.
