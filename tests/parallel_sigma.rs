@@ -8,6 +8,45 @@ use ed_workbench_rs::direct_fci::{
 use ed_workbench_rs::fcidump::Fcidump;
 use ed_workbench_rs::operator::LinearOperator;
 use ed_workbench_rs::problem::ElectronicProblem;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct ParallelMeasurement {
+    schema_version: u32,
+    artifact_kind: String,
+    measured_commit: String,
+    problem: MeasuredProblem,
+    parallel_policy: MeasuredPolicy,
+    runs: Vec<MeasuredRun>,
+    aggregate: MeasuredAggregate,
+}
+
+#[derive(Deserialize)]
+struct MeasuredProblem {
+    determinants: usize,
+}
+
+#[derive(Deserialize)]
+struct MeasuredPolicy {
+    source_blocks: usize,
+    preflight_workspace_bytes: u64,
+}
+
+#[derive(Deserialize)]
+struct MeasuredRun {
+    index: usize,
+    serial_seconds: f64,
+    parallel_seconds: f64,
+    maximum_serial_parallel_error: f64,
+}
+
+#[derive(Deserialize)]
+struct MeasuredAggregate {
+    median_serial_seconds: f64,
+    median_parallel_seconds: f64,
+    ratio_of_medians: f64,
+    maximum_serial_parallel_error: f64,
+}
 
 fn operator(slug: &str) -> DirectFciOperator {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -161,4 +200,103 @@ fn davidson_cli_exposes_parallel_preflight_and_strict_rejection() {
         "{}",
         String::from_utf8_lossy(&rejected.stderr)
     );
+}
+
+#[test]
+#[ignore = "release-mode primary H2O/6-31G serial/parallel sigma measurement"]
+fn primary_water_parallel_sigma_measurement() {
+    let serial = operator("h2o-631g-fc");
+    let input: Vec<_> = (0..serial.dimension())
+        .map(|index| ((index * 31 + 7) as f64).sin())
+        .collect();
+    let mut serial_output = vec![0.0; input.len()];
+    let serial_report = serial
+        .apply_with_report(&input, &mut serial_output)
+        .unwrap();
+
+    let parallel = operator("h2o-631g-fc")
+        .with_execution_policy(ExecutionPolicy::Parallel {
+            blocks: 4,
+            memory_budget_bytes: 2 * 1024_u64.pow(3),
+            allow_serial_fallback: false,
+        })
+        .unwrap();
+    let mut parallel_output = vec![0.0; input.len()];
+    let parallel_report = parallel
+        .apply_with_report(&input, &mut parallel_output)
+        .unwrap();
+    let maximum_error = serial_output
+        .iter()
+        .zip(&parallel_output)
+        .map(|(serial, parallel)| (serial - parallel).abs())
+        .fold(0.0, f64::max);
+    assert!(maximum_error < 1e-10, "maximum error {maximum_error:e}");
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "dimension": input.len(),
+            "maximum_serial_parallel_error": maximum_error,
+            "serial": serial_report,
+            "parallel": parallel_report,
+        }))
+        .unwrap()
+    );
+}
+
+#[test]
+fn committed_primary_parallel_measurement_recomputes() {
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h2o-631g-fc/parallel-sigma-m4.json");
+    let measurement: ParallelMeasurement =
+        serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+    assert_eq!(measurement.schema_version, 1);
+    assert_eq!(measurement.artifact_kind, "h2o-631g-fc-parallel-sigma");
+    assert_eq!(measurement.measured_commit.len(), 40);
+    assert_eq!(measurement.problem.determinants, 245_025);
+    assert_eq!(measurement.parallel_policy.source_blocks, 4);
+    assert_eq!(
+        measurement.parallel_policy.preflight_workspace_bytes,
+        7_840_800
+    );
+    assert_eq!(measurement.runs.len(), 5);
+    assert_eq!(
+        measurement
+            .runs
+            .iter()
+            .map(|run| run.index)
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3, 4, 5]
+    );
+    let median = |mut values: Vec<f64>| {
+        values.sort_by(f64::total_cmp);
+        values[values.len() / 2]
+    };
+    let serial = median(
+        measurement
+            .runs
+            .iter()
+            .map(|run| run.serial_seconds)
+            .collect(),
+    );
+    let parallel = median(
+        measurement
+            .runs
+            .iter()
+            .map(|run| run.parallel_seconds)
+            .collect(),
+    );
+    let maximum_error = measurement
+        .runs
+        .iter()
+        .map(|run| run.maximum_serial_parallel_error)
+        .fold(0.0, f64::max);
+    assert_eq!(serial, measurement.aggregate.median_serial_seconds);
+    assert_eq!(parallel, measurement.aggregate.median_parallel_seconds);
+    assert!((serial / parallel - measurement.aggregate.ratio_of_medians).abs() < 1e-6);
+    assert_eq!(
+        maximum_error,
+        measurement.aggregate.maximum_serial_parallel_error
+    );
+    assert!(maximum_error < 1e-10);
 }
