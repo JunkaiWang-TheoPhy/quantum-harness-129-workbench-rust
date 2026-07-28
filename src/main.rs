@@ -5,6 +5,9 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use ed_workbench_rs::ao2mo::transform_to_mo;
+use ed_workbench_rs::benchmark::{
+    BoundedBenchmarkConfig, BoundedBenchmarkResult, run_h2o_cc_pvdz_benchmark,
+};
 use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc, solve_cc_series};
 use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
 use ed_workbench_rs::dense_fci::ground_state_energy;
@@ -122,6 +125,16 @@ enum Command {
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
     },
+    Benchmark {
+        #[arg(value_enum)]
+        system: BenchmarkSystem,
+        #[arg(long, default_value_t = 16)]
+        sources: usize,
+        #[arg(long, default_value_t = 2.0)]
+        max_memory_gib: f64,
+        #[arg(long)]
+        json_output: Option<PathBuf>,
+    },
     Verify {
         fcidump: PathBuf,
         reference: PathBuf,
@@ -134,6 +147,11 @@ enum Command {
 enum DirectSystem {
     H2Sto3g,
     H2oSto3g,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum BenchmarkSystem {
+    H2oCcPvdz,
 }
 
 impl DirectSystem {
@@ -643,6 +661,29 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 return Err("direct-integrals FCI did not converge".into());
             }
         }
+        Command::Benchmark {
+            system,
+            sources,
+            max_memory_gib,
+            json_output,
+        } => {
+            let result = match system {
+                BenchmarkSystem::H2oCcPvdz => run_h2o_cc_pvdz_benchmark(BoundedBenchmarkConfig {
+                    sources,
+                    max_memory_gib,
+                })?,
+            };
+            print_benchmark_result(&result);
+            if let Some(path) = json_output {
+                if let Some(parent) = path.parent()
+                    && !parent.as_os_str().is_empty()
+                {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::write(&path, serde_json::to_vec_pretty(&result)?)?;
+                println!("JSON output: {}", path.display());
+            }
+        }
         Command::Verify {
             fcidump,
             reference,
@@ -676,6 +717,78 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+fn print_benchmark_result(result: &BoundedBenchmarkResult) {
+    const GIB: f64 = (1024_u64.pow(3)) as f64;
+    println!("system: {}", result.system);
+    println!("geometry: {}", result.geometry);
+    println!("basis: {}", result.basis);
+    println!("basis provenance: {}", result.basis_provenance);
+    println!("coordinate unit: {}", result.coordinate_unit);
+    println!("energy unit: {}", result.energy_unit);
+    println!("all electrons: {}", result.all_electron);
+    println!("point-group symmetry: {}", result.point_group_symmetry);
+    println!("orbitals: {}", result.norb);
+    println!("electrons: {}", result.nelec);
+    println!("Nalpha/Nbeta: {}/{}", result.nalpha, result.nbeta);
+    println!("alpha strings: {}", result.space.alpha_strings);
+    println!("beta strings: {}", result.space.beta_strings);
+    println!("determinants: {}", result.space.determinants);
+    println!(
+        "one dense CI vector: {:.6} GiB",
+        result.space.vector_bytes as f64 / GIB
+    );
+    println!(
+        "current Davidson minimum: {:.6} GiB",
+        result.space.minimum_current_davidson_bytes as f64 / GIB
+    );
+    println!(
+        "24-vector-pair Davidson subspace: {:.6} GiB",
+        result.space.subspace_24_bytes as f64 / GIB
+    );
+    println!(
+        "bounded benchmark estimate: {:.6} GiB",
+        result.bounded_memory.conservative_peak_bytes as f64 / GIB
+    );
+    println!(
+        "memory budget: {:.6} GiB",
+        result.memory_budget_bytes as f64 / GIB
+    );
+    println!("RHF total energy: {:.15}", result.rhf_total_energy);
+    println!("PySCF RHF reference: {:.15}", result.rhf_reference_energy);
+    println!("RHF absolute error: {:.3e} Eh", result.rhf_absolute_error);
+    println!("RHF iterations: {}", result.rhf_iterations);
+    println!("RHF density RMS: {:.3e}", result.rhf_density_rms);
+    println!(
+        "integral time: {:.6} s",
+        result.timings.ao_integrals_seconds
+    );
+    println!("RHF time: {:.6} s", result.timings.rhf_seconds);
+    println!("AO-to-MO time: {:.6} s", result.timings.ao_to_mo_seconds);
+    println!(
+        "string/link time: {:.6} s",
+        result.timings.link_tables_seconds
+    );
+    println!(
+        "sparse-column time: {:.6} s",
+        result.timings.sparse_columns_seconds
+    );
+    println!("sparse columns: {}", result.sparse_kernel.sources);
+    println!(
+        "raw Hamiltonian contributions: {}",
+        result.sparse_kernel.raw_contributions
+    );
+    println!(
+        "Hamiltonian contributions/s: {:.3e}",
+        result.sparse_kernel.contributions_per_second
+    );
+    println!(
+        "sparse-column checksum: {:.15}",
+        result.sparse_kernel.checksum
+    );
+    println!("Rayon threads: {}", result.rayon_threads);
+    println!("full FCI executed: {}", result.full_fci_executed);
 }
 
 fn validate_hirata_context(

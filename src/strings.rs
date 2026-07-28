@@ -103,6 +103,10 @@ impl StringSpace {
         self.strings.len()
     }
 
+    pub fn link_count(&self) -> usize {
+        self.outgoing.iter().map(Vec::len).sum()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.strings.is_empty()
     }

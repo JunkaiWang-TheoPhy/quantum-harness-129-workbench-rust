@@ -252,6 +252,30 @@ H2O/STO-3G gives RHF `-74.962663067690499` and direct FCI
 `-75.012918738193051` hartree. The FCI error against PySCF is `1.485e-10`
 hartree. See [reports/level4-integrals.md](reports/level4-integrals.md).
 
+### Reviewer Follow-Up — H2O/cc-pVDZ, All Electrons, No Point-Group Symmetry
+
+The requested larger-basis benchmark now runs the Rust integral, RHF,
+AO-to-MO, determinant-link, and sparse Hamiltonian-column stages under a
+2 GiB conservative preflight budget. On the Apple M4 validation machine it
+used at most `447.25 MiB` RSS and completed in a median `1.42 s` across five
+fresh release processes. Rust RHF differs from PySCF 2.14.0 by `6.230e-11 Eh`.
+
+The exact fixed-`Nalpha=Nbeta=5` space contains `1,806,590,016` determinants.
+One full CI vector alone is `13.460145 GiB`; the current 24-pair Davidson
+subspace would require `646.086937 GiB`. The bounded command therefore does
+not allocate full vectors or claim a converged cc-pVDZ FCI energy.
+
+```bash
+cargo run --release -- benchmark h2o-cc-pvdz \
+  --sources 16 \
+  --max-memory-gib 2 \
+  --json-output fixtures/h2o-ccpvdz-ae/benchmark-m4.json
+```
+
+See the
+[full benchmark report](reports/h2o-ccpvdz-all-electron-benchmark.md) and
+[machine-readable run](fixtures/h2o-ccpvdz-ae/benchmark-m4.json).
+
 The required ecosystem findings are recorded in
 [reports/tenferro-gap-list.md](reports/tenferro-gap-list.md). tenferro-rs 0.2.0
 already supplies dense tensors, strided views, gather/scatter, division,
@@ -322,6 +346,9 @@ active interpreter rather than `.venv`.
   CC(n).
 - [Level 4 report](reports/level4-integrals.md) — Python-free direct-integral
   pipeline and element-level PySCF comparisons.
+- [H2O/cc-pVDZ benchmark](reports/h2o-ccpvdz-all-electron-benchmark.md) —
+  bounded all-electron timings, memory measurements, and the explicit
+  full-space scalability boundary.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 

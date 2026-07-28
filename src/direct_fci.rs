@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use thiserror::Error;
 
 use crate::determinant::DeterminantBasis;
@@ -6,23 +8,37 @@ use crate::problem::{ElectronicProblem, index4};
 use crate::strings::{OneBodyLink, StringSpace, StringSpaceError};
 
 #[derive(Debug)]
-pub struct DirectFciOperator {
+pub struct DirectFciKernel {
     problem: ElectronicProblem,
     pub alpha: StringSpace,
     pub beta: StringSpace,
     effective_eri: Vec<f64>,
+}
+
+#[derive(Debug)]
+pub struct DirectFciOperator {
+    kernel: DirectFciKernel,
     diagonal: Vec<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SparseColumn {
+    pub source: usize,
+    pub entries: Vec<(usize, f64)>,
+    pub raw_contributions: usize,
 }
 
 #[derive(Debug, Error)]
 pub enum DirectFciError {
     #[error("invalid electron/spin counts")]
     InvalidSpin,
+    #[error("source determinant index {index} is outside dimension {dimension}")]
+    SourceOutOfRange { index: usize, dimension: usize },
     #[error(transparent)]
     Strings(#[from] StringSpaceError),
 }
 
-impl DirectFciOperator {
+impl DirectFciKernel {
     pub fn new(problem: ElectronicProblem) -> Result<Self, DirectFciError> {
         let nalpha_twice = problem.nelec as isize + problem.ms2;
         let nbeta_twice = problem.nelec as isize - problem.ms2;
@@ -32,13 +48,11 @@ impl DirectFciOperator {
         let alpha = StringSpace::new(problem.norb, (nalpha_twice / 2) as usize)?;
         let beta = StringSpace::new(problem.norb, (nbeta_twice / 2) as usize)?;
         let effective_eri = absorb_one_body(&problem);
-        let diagonal = hamiltonian_diagonal(&problem, &alpha, &beta);
         Ok(Self {
             problem,
             alpha,
             beta,
             effective_eri,
-            diagonal,
         })
     }
 
@@ -50,28 +64,116 @@ impl DirectFciOperator {
         self.effective_eri[index4(self.problem.norb, p, q, r, s)]
     }
 
-    fn add_link_pair(
-        &self,
-        coefficient: f64,
-        first: &OneBodyLink,
-        second: &OneBodyLink,
-        destination: usize,
-        output: &mut [f64],
-    ) {
+    fn link_pair_value(&self, coefficient: f64, first: &OneBodyLink, second: &OneBodyLink) -> f64 {
         let integral = self.g(
             second.created,
             second.annihilated,
             first.created,
             first.annihilated,
         );
-        output[destination] +=
-            coefficient * integral * f64::from(first.sign) * f64::from(second.sign);
+        coefficient * integral * f64::from(first.sign) * f64::from(second.sign)
+    }
+
+    fn apply_source(
+        &self,
+        source: usize,
+        coefficient: f64,
+        mut accumulate: impl FnMut(usize, f64),
+    ) -> Result<(), DirectFciError> {
+        let dimension = self.dimension();
+        if source >= dimension {
+            return Err(DirectFciError::SourceOutOfRange {
+                index: source,
+                dimension,
+            });
+        }
+        let nb = self.beta.len();
+        let alpha_source = source / nb;
+        let beta_source = source % nb;
+        accumulate(source, self.problem.ecore * coefficient);
+
+        for first in self.alpha.outgoing(alpha_source) {
+            for second in self.alpha.outgoing(first.target) {
+                let destination = second.target * nb + beta_source;
+                accumulate(
+                    destination,
+                    self.link_pair_value(coefficient, first, second),
+                );
+            }
+            for second in self.beta.outgoing(beta_source) {
+                let destination = first.target * nb + second.target;
+                accumulate(
+                    destination,
+                    self.link_pair_value(coefficient, first, second),
+                );
+            }
+        }
+        for first in self.beta.outgoing(beta_source) {
+            for second in self.alpha.outgoing(alpha_source) {
+                let destination = second.target * nb + first.target;
+                accumulate(
+                    destination,
+                    self.link_pair_value(coefficient, first, second),
+                );
+            }
+            for second in self.beta.outgoing(first.target) {
+                let destination = alpha_source * nb + second.target;
+                accumulate(
+                    destination,
+                    self.link_pair_value(coefficient, first, second),
+                );
+            }
+        }
+        Ok(())
+    }
+
+    pub fn dimension(&self) -> usize {
+        self.alpha.len() * self.beta.len()
+    }
+
+    pub fn apply_source_sparse(&self, source: usize) -> Result<SparseColumn, DirectFciError> {
+        let mut entries = HashMap::new();
+        let mut raw_contributions = 0;
+        self.apply_source(source, 1.0, |destination, value| {
+            raw_contributions += 1;
+            *entries.entry(destination).or_insert(0.0) += value;
+        })?;
+        let mut entries: Vec<_> = entries
+            .into_iter()
+            .filter(|(_, value)| *value != 0.0)
+            .collect();
+        entries.sort_unstable_by_key(|(destination, _)| *destination);
+        Ok(SparseColumn {
+            source,
+            entries,
+            raw_contributions,
+        })
+    }
+
+    pub fn alpha_link_count(&self) -> usize {
+        self.alpha.link_count()
+    }
+
+    pub fn beta_link_count(&self) -> usize {
+        self.beta.link_count()
+    }
+}
+
+impl DirectFciOperator {
+    pub fn new(problem: ElectronicProblem) -> Result<Self, DirectFciError> {
+        let kernel = DirectFciKernel::new(problem)?;
+        let diagonal = hamiltonian_diagonal(&kernel.problem, &kernel.alpha, &kernel.beta);
+        Ok(Self { kernel, diagonal })
+    }
+
+    pub fn problem(&self) -> &ElectronicProblem {
+        self.kernel.problem()
     }
 }
 
 impl LinearOperator for DirectFciOperator {
     fn dimension(&self) -> usize {
-        self.alpha.len() * self.beta.len()
+        self.kernel.dimension()
     }
 
     fn diagonal(&self) -> &[f64] {
@@ -93,37 +195,15 @@ impl LinearOperator for DirectFciOperator {
             });
         }
         output.fill(0.0);
-        let nb = self.beta.len();
-        for alpha_source in 0..self.alpha.len() {
-            for beta_source in 0..nb {
-                let source = alpha_source * nb + beta_source;
-                let coefficient = input[source];
-                if coefficient == 0.0 {
-                    continue;
-                }
-                output[source] += self.problem.ecore * coefficient;
-
-                for first in self.alpha.outgoing(alpha_source) {
-                    for second in self.alpha.outgoing(first.target) {
-                        let destination = second.target * nb + beta_source;
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                    for second in self.beta.outgoing(beta_source) {
-                        let destination = first.target * nb + second.target;
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                }
-                for first in self.beta.outgoing(beta_source) {
-                    for second in self.alpha.outgoing(alpha_source) {
-                        let destination = second.target * nb + first.target;
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                    for second in self.beta.outgoing(first.target) {
-                        let destination = alpha_source * nb + second.target;
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                }
+        for (source, &coefficient) in input.iter().enumerate() {
+            if coefficient == 0.0 {
+                continue;
             }
+            self.kernel
+                .apply_source(source, coefficient, |destination, value| {
+                    output[destination] += value;
+                })
+                .expect("source originates from the validated input dimension");
         }
         Ok(())
     }
@@ -201,9 +281,9 @@ fn hamiltonian_diagonal(
 
 pub fn determinant_basis(operator: &DirectFciOperator) -> DeterminantBasis {
     DeterminantBasis::new(
-        operator.problem.norb,
-        operator.problem.nelec,
-        operator.problem.ms2,
+        operator.problem().norb,
+        operator.problem().nelec,
+        operator.problem().ms2,
     )
     .expect("validated direct-FCI problem must define a determinant basis")
 }
@@ -253,5 +333,31 @@ mod tests {
     #[test]
     fn h4_direct_sigma_matches_dense() {
         compare_fixture("h4-sto3g");
+    }
+
+    #[test]
+    fn sparse_columns_match_full_operator() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("fixtures")
+            .join("h2-sto3g")
+            .join("FCIDUMP");
+        let dump = Fcidump::parse(&fs::read_to_string(path).unwrap()).unwrap();
+        let problem = ElectronicProblem::from_fcidump(&dump).unwrap();
+        let operator = DirectFciOperator::new(problem.clone()).unwrap();
+        let kernel = DirectFciKernel::new(problem).unwrap();
+        for source in 0..operator.dimension() {
+            let mut input = vec![0.0; operator.dimension()];
+            input[source] = 1.0;
+            let mut expected = vec![0.0; operator.dimension()];
+            operator.apply(&input, &mut expected).unwrap();
+            let sparse = kernel.apply_source_sparse(source).unwrap();
+            let mut actual = vec![0.0; operator.dimension()];
+            for &(destination, value) in &sparse.entries {
+                actual[destination] = value;
+            }
+            for (actual, expected) in actual.iter().zip(expected) {
+                assert!((actual - expected).abs() < 1e-12);
+            }
+        }
     }
 }

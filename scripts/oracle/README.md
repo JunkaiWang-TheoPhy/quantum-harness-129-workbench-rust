@@ -42,3 +42,13 @@ oxygen 1s orbital after RHF. Regeneration is an oracle audit, not a prerequisite
 for the Rust calculations. Before replacing any committed primary fixture,
 require the generated FCIDUMP checksum and every numerical reference field to
 match or document and review the platform-dependent difference.
+
+The review benchmark reference is deliberately RHF-only:
+
+```bash
+.venv/bin/python scripts/oracle/generate.py h2o-ccpvdz-ae
+```
+
+It uses all 10 electrons, 24 cc-pVDZ spatial orbitals, `symmetry=False`, and
+records the fixed-`Nalpha=Nbeta=5` determinant dimension. It does not create
+FCIDUMP, run FCI, CCSD, or MP2, or allocate a full CI vector.

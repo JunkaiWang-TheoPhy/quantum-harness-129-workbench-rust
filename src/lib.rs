@@ -25,6 +25,7 @@
 pub mod active_space;
 pub mod amplitudes;
 pub mod ao2mo;
+pub mod benchmark;
 pub mod cluster;
 pub mod coupled_cluster;
 pub mod davidson;

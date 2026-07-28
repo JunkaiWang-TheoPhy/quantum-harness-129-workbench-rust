@@ -44,10 +44,17 @@ pub enum IntegralError {
 }
 
 pub fn compute_ao_integrals(molecule: &Molecule) -> Result<AoIntegrals, IntegralError> {
-    let basis_input = if molecule.basis.eq_ignore_ascii_case("sto-3g") {
+    let embedded_basis = if molecule.basis.eq_ignore_ascii_case("sto-3g") {
+        Some((STO3G_H, STO3G_O, "STO-3G"))
+    } else if molecule.basis.eq_ignore_ascii_case("cc-pvdz") {
+        Some((CCPVDZ_H, CCPVDZ_O, "cc-pVDZ"))
+    } else {
+        None
+    };
+    let basis_input = if let Some((hydrogen, oxygen, _)) = embedded_basis {
         format!(
             "basis = \"custom\"\n[basis-custom]\nH = '''{}'''\nO = '''{}'''\n",
-            STO3G_H, STO3G_O
+            hydrogen, oxygen
         )
     } else {
         format!("basis = \"{}\"\n", molecule.basis)
@@ -94,8 +101,8 @@ pub fn compute_ao_integrals(molecule: &Molecule) -> Result<AoIntegrals, Integral
         nao,
         nelec: nelec_signed as usize,
         coordinate_unit: molecule.coordinate_unit,
-        basis_provenance: if molecule.basis.eq_ignore_ascii_case("sto-3g") {
-            "PySCF 2.14.0 STO-3G values embedded as NWChem text".to_string()
+        basis_provenance: if let Some((_, _, basis_name)) = embedded_basis {
+            format!("PySCF 2.14.0 {basis_name} values embedded as NWChem text")
         } else {
             format!("libcint named-basis resolver: {}", molecule.basis)
         },
@@ -124,6 +131,39 @@ O SP
   0.3803890  0.70011547  0.39195739
 END"#;
 
+const CCPVDZ_H: &str = r#"BASIS "ao basis" SPHERICAL PRINT
+H S
+  13.010000000  0.019685000
+   1.962000000  0.137977000
+   0.444600000  0.478148000
+H S
+   0.122000000  1.000000000
+H P
+   0.727000000  1.000000000
+END"#;
+
+const CCPVDZ_O: &str = r#"BASIS "ao basis" SPHERICAL PRINT
+O S
+  11720.000000000  0.000710000 -0.000160000
+   1759.000000000  0.005470000 -0.001263000
+    400.800000000  0.027837000 -0.006267000
+    113.700000000  0.104800000 -0.025716000
+     37.030000000  0.283062000 -0.070924000
+     13.270000000  0.448719000 -0.165411000
+      5.025000000  0.270952000 -0.116955000
+      1.013000000  0.015458000  0.557368000
+O S
+      0.302300000  1.000000000
+O P
+     17.700000000  0.043018000
+      3.854000000  0.228913000
+      1.046000000  0.508728000
+O P
+      0.275300000  1.000000000
+O D
+      1.185000000  1.000000000
+END"#;
+
 fn integral(cint: &CInt, name: &str, expected: &[usize]) -> Result<Vec<f64>, IntegralError> {
     let output = cint.integrate_row_major(name, None, None);
     if output.shape != expected {
@@ -136,4 +176,17 @@ fn integral(cint: &CInt, name: &str, expected: &[usize]) -> Result<Vec<f64>, Int
     output.out.ok_or_else(|| IntegralError::MissingData {
         name: name.to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_cc_pvdz_water_basis_has_24_spherical_functions() {
+        let integrals = compute_ao_integrals(&Molecule::h2o_cc_pvdz()).unwrap();
+        assert_eq!(integrals.nao, 24);
+        assert_eq!(integrals.nelec, 10);
+        assert!(integrals.basis_provenance.contains("PySCF 2.14.0 cc-pVDZ"));
+    }
 }

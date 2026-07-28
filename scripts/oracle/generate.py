@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 import platform
@@ -28,6 +29,7 @@ class System:
     coordinate_unit: str = "Angstrom"
     geometry_parameters: tuple[tuple[str, float, str], ...] = ()
     frozen_orbitals: tuple[int, ...] = ()
+    benchmark_only: bool = False
 
 
 SYSTEMS = {
@@ -74,6 +76,17 @@ SYSTEMS = {
         ),
         frozen_orbitals=(0,),
     ),
+    "h2o-ccpvdz-ae": System(
+        slug="h2o-ccpvdz-ae",
+        name="H2O/cc-pVDZ all-electron",
+        atom="O 0 0 0; H 0.967 0 0; H -0.2923916843556798 0.9217353757557798 0",
+        basis="cc-pvdz",
+        geometry_parameters=(
+            ("R(O-H)", 0.967, "angstrom"),
+            ("angle(H-O-H)", 107.6, "degree"),
+        ),
+        benchmark_only=True,
+    ),
 }
 
 
@@ -106,6 +119,50 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         raise RuntimeError(f"RHF did not converge for {system.slug}")
 
     nmo = mf.mo_coeff.shape[1]
+    if system.benchmark_only:
+        nalpha = (mol.nelectron + system.spin) // 2
+        nbeta = mol.nelectron - nalpha
+        alpha_strings = math.comb(nmo, nalpha)
+        beta_strings = math.comb(nmo, nbeta)
+        reference: dict[str, object] = {
+            "schema_version": 1,
+            "system": system.name,
+            "slug": system.slug,
+            "geometry_angstrom": system.atom,
+            "coordinate_unit": system.coordinate_unit.lower(),
+            "geometry_parameters": [
+                {"name": name, "value": value, "unit": unit}
+                for name, value, unit in system.geometry_parameters
+            ],
+            "basis": system.basis,
+            "charge": system.charge,
+            "spin": system.spin,
+            "all_electron": True,
+            "point_group_symmetry": False,
+            "number_of_atomic_orbitals": int(mol.nao_nr()),
+            "number_of_molecular_orbitals": int(nmo),
+            "number_of_electrons": int(mol.nelectron),
+            "nalpha": nalpha,
+            "nbeta": nbeta,
+            "alpha_strings": alpha_strings,
+            "beta_strings": beta_strings,
+            "determinants": alpha_strings * beta_strings,
+            "nuclear_repulsion_energy": float(mol.energy_nuc()),
+            "hf_converged": bool(mf.converged),
+            "hf_energy": hf_energy,
+            "full_fci_executed": False,
+            "pyscf_version": pyscf.__version__,
+            "python_version": platform.python_version(),
+            "generator": "scripts/oracle/generate.py",
+            "energy_unit": "hartree",
+        }
+        reference_path = output_dir / "reference.json"
+        reference_path.write_text(
+            json.dumps(reference, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return reference
+
     mo_h1 = mf.mo_coeff.T @ mf.get_hcore() @ mf.mo_coeff
     mo_eri = ao2mo.restore(1, ao2mo.kernel(mol, mf.mo_coeff), nmo)
     frozen = tuple(system.frozen_orbitals)
@@ -246,11 +303,18 @@ def main() -> int:
     selected_systems = args.systems or sorted(SYSTEMS)
     for slug in selected_systems:
         reference = generate(SYSTEMS[slug], args.fixtures_root)
-        print(
-            f"{slug}: HF={reference['hf_energy']:.12f} "
-            f"FCI={reference['fci_energy']:.12f} "
-            f"CCSD={reference['ccsd_total_energy']:.12f}"
-        )
+        if SYSTEMS[slug].benchmark_only:
+            print(
+                f"{slug}: HF={reference['hf_energy']:.12f} "
+                f"determinants={reference['determinants']} "
+                "FCI=not executed"
+            )
+        else:
+            print(
+                f"{slug}: HF={reference['hf_energy']:.12f} "
+                f"FCI={reference['fci_energy']:.12f} "
+                f"CCSD={reference['ccsd_total_energy']:.12f}"
+            )
     return 0
 
 
