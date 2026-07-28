@@ -67,6 +67,23 @@ fn h2_full_rank_ucc_reaches_fci_variationally() {
 }
 
 #[test]
+fn h4_full_rank_ucc_reaches_fci_variationally() {
+    let (operator, reference) = load("h4-sto3g");
+    let model = UnitaryCcModel::new(&operator, 4).unwrap();
+    let hf_energy = model.energy(&vec![0.0; model.parameter_count()]).unwrap();
+    let result = model.optimize(&BfgsConfig {
+        gradient_tolerance: 1e-7,
+        max_iterations: 100,
+        finite_difference_step: 1e-5,
+    });
+    assert_eq!(model.parameter_count(), 35);
+    assert!(result.converged, "gradient {}", result.gradient_norm);
+    assert!(result.value <= hf_energy + 1e-10);
+    assert!(result.value >= reference.fci_energy - 1e-10);
+    assert!((result.value - reference.fci_energy).abs() < 1e-8);
+}
+
+#[test]
 fn warm_started_ci_series_is_variational_and_reaches_fci() {
     let (operator, reference) = load("h4-sto3g");
     let config = DavidsonConfig {

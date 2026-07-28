@@ -6,7 +6,7 @@ use std::time::Instant;
 use clap::{Parser, Subcommand, ValueEnum};
 use ed_workbench_rs::ao2mo::transform_to_mo;
 use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc, solve_cc_series};
-use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
+use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair, lowest_eigenpairs};
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
 use ed_workbench_rs::direct_fci::DirectFciOperator;
@@ -50,6 +50,17 @@ enum Command {
     },
     SigmaBenchmark {
         fcidump: PathBuf,
+    },
+    DavidsonRoots {
+        fcidump: PathBuf,
+        #[arg(long)]
+        roots: usize,
+        #[arg(long, default_value_t = 1e-8)]
+        residual_tolerance: f64,
+        #[arg(long, default_value_t = 100)]
+        max_iterations: usize,
+        #[arg(long, default_value_t = 24)]
+        max_subspace: usize,
     },
     Cc {
         fcidump: PathBuf,
@@ -256,6 +267,45 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("sigma apply seconds: {:.6}", apply_elapsed.as_secs_f64());
             println!("output norm: {:.15e}", output_norm);
             println!("weighted checksum: {:.15e}", checksum);
+        }
+        Command::DavidsonRoots {
+            fcidump,
+            roots,
+            residual_tolerance,
+            max_iterations,
+            max_subspace,
+        } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let results = lowest_eigenpairs(
+                &operator,
+                roots,
+                &DavidsonConfig {
+                    residual_tolerance,
+                    energy_tolerance: residual_tolerance * 0.01,
+                    max_iterations,
+                    max_subspace,
+                },
+            )?;
+            println!(
+                "root\tenergy_hartree\texcitation_energy_hartree\titerations\tresidual\tconverged"
+            );
+            let ground = results[0].energy;
+            for (root, result) in results.iter().enumerate() {
+                println!(
+                    "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{}",
+                    root,
+                    result.energy,
+                    result.energy - ground,
+                    result.iterations,
+                    result.residual_norm,
+                    result.converged
+                );
+            }
+            if results.iter().any(|result| !result.converged) {
+                return Err("multi-root Davidson did not converge".into());
+            }
         }
         Command::Cc {
             fcidump,

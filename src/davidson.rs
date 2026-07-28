@@ -41,6 +41,12 @@ pub enum DavidsonError {
     InvalidInitialVector,
     #[error("max_subspace must be at least 2")]
     InvalidSubspace,
+    #[error("requested {requested} roots from an operator of dimension {dimension}")]
+    InvalidRootCount { requested: usize, dimension: usize },
+    #[error(
+        "multi-root Davidson needs max_subspace >= 2 * roots, got {max_subspace} for {roots} roots"
+    )]
+    RootSubspace { roots: usize, max_subspace: usize },
     #[error(transparent)]
     Operator(#[from] OperatorError),
 }
@@ -169,6 +175,133 @@ pub fn lowest_eigenpair(
     Ok(last_result)
 }
 
+pub fn lowest_eigenpairs(
+    operator: &impl LinearOperator,
+    roots: usize,
+    config: &DavidsonConfig,
+) -> Result<Vec<DavidsonResult>, DavidsonError> {
+    let dimension = operator.dimension();
+    if roots == 0 || roots > dimension {
+        return Err(DavidsonError::InvalidRootCount {
+            requested: roots,
+            dimension,
+        });
+    }
+    if config.max_subspace < 2 * roots {
+        return Err(DavidsonError::RootSubspace {
+            roots,
+            max_subspace: config.max_subspace,
+        });
+    }
+
+    let mut coordinate_order: Vec<_> = (0..dimension).collect();
+    coordinate_order
+        .sort_by(|&left, &right| operator.diagonal()[left].total_cmp(&operator.diagonal()[right]));
+    let mut basis = Vec::with_capacity(config.max_subspace);
+    let mut sigma_basis = Vec::with_capacity(config.max_subspace);
+    let initial_count = (2 * roots).min(dimension).min(config.max_subspace);
+    for &coordinate in coordinate_order.iter().take(initial_count) {
+        let mut vector = vec![0.0; dimension];
+        vector[coordinate] = 1.0;
+        let mut sigma = vec![0.0; dimension];
+        operator.apply(&vector, &mut sigma)?;
+        basis.push(vector);
+        sigma_basis.push(sigma);
+    }
+
+    let mut previous_energies = vec![f64::INFINITY; roots];
+    let mut last_results = Vec::new();
+    for iteration in 1..=config.max_iterations {
+        let subspace = basis.len();
+        let mut projected = DMatrix::zeros(subspace, subspace);
+        for i in 0..subspace {
+            for j in 0..=i {
+                let value = dot(&basis[i], &sigma_basis[j]);
+                projected[(i, j)] = value;
+                projected[(j, i)] = value;
+            }
+        }
+        let eigensystem = SymmetricEigen::new(projected);
+        let mut root_order: Vec<_> = (0..subspace).collect();
+        root_order.sort_by(|&left, &right| {
+            eigensystem.eigenvalues[left].total_cmp(&eigensystem.eigenvalues[right])
+        });
+
+        let mut ritz_vectors = Vec::with_capacity(roots);
+        let mut ritz_sigmas = Vec::with_capacity(roots);
+        let mut residuals = Vec::with_capacity(roots);
+        last_results.clear();
+        for root in 0..roots {
+            let projected_root = root_order[root];
+            let energy = eigensystem.eigenvalues[projected_root];
+            let coefficients = eigensystem.eigenvectors.column(projected_root);
+            let mut eigenvector = vec![0.0; dimension];
+            let mut sigma = vec![0.0; dimension];
+            for k in 0..subspace {
+                axpy(coefficients[k], &basis[k], &mut eigenvector);
+                axpy(coefficients[k], &sigma_basis[k], &mut sigma);
+            }
+            let mut residual = sigma.clone();
+            axpy(-energy, &eigenvector, &mut residual);
+            let residual_norm = norm(&residual);
+            let energy_change = (energy - previous_energies[root]).abs();
+            last_results.push(DavidsonResult {
+                energy,
+                eigenvector: eigenvector.clone(),
+                residual_norm,
+                iterations: iteration,
+                converged: residual_norm <= config.residual_tolerance
+                    && energy_change <= config.energy_tolerance,
+            });
+            ritz_vectors.push(eigenvector);
+            ritz_sigmas.push(sigma);
+            residuals.push(residual);
+        }
+        if last_results.iter().all(|result| result.converged) || iteration == config.max_iterations
+        {
+            return Ok(last_results);
+        }
+        for (previous, result) in previous_energies.iter_mut().zip(&last_results) {
+            *previous = result.energy;
+        }
+
+        let mut corrections = Vec::with_capacity(roots);
+        for root in 0..roots {
+            if last_results[root].residual_norm <= config.residual_tolerance {
+                continue;
+            }
+            let mut correction = std::mem::take(&mut residuals[root]);
+            for (index, value) in correction.iter_mut().enumerate() {
+                let denominator = last_results[root].energy - operator.diagonal()[index];
+                if denominator.abs() > 1e-12 {
+                    *value /= denominator;
+                }
+            }
+            orthogonalize(&mut correction, &basis);
+            orthogonalize(&mut correction, &corrections);
+            if norm(&correction) > 1e-12 {
+                normalize(&mut correction)?;
+                corrections.push(correction);
+            }
+        }
+        if corrections.is_empty() {
+            continue;
+        }
+
+        if basis.len() + corrections.len() > config.max_subspace {
+            basis = ritz_vectors;
+            sigma_basis = ritz_sigmas;
+        }
+        for correction in corrections {
+            let mut correction_sigma = vec![0.0; dimension];
+            operator.apply(&correction, &mut correction_sigma)?;
+            basis.push(correction);
+            sigma_basis.push(correction_sigma);
+        }
+    }
+    Ok(last_results)
+}
+
 fn dot(left: &[f64], right: &[f64]) -> f64 {
     left.iter().zip(right).map(|(a, b)| a * b).sum()
 }
@@ -269,5 +402,63 @@ mod tests {
         assert!(result.converged);
         assert!((result.energy - expected).abs() < 1e-10);
         assert!(result.residual_norm < 1e-10);
+    }
+
+    #[test]
+    fn block_davidson_finds_multiple_orthogonal_roots() {
+        let matrix = DMatrix::from_row_slice(
+            4,
+            4,
+            &[
+                1.0, 0.2, 0.0, 0.1, 0.2, 2.0, 0.3, 0.0, 0.0, 0.3, 3.0, 0.4, 0.1, 0.0, 0.4, 4.0,
+            ],
+        );
+        let exact = SymmetricEigen::new(matrix.clone());
+        let mut expected = exact.eigenvalues.as_slice().to_vec();
+        expected.sort_by(f64::total_cmp);
+        let operator = MatrixOperator {
+            diagonal: matrix.diagonal().iter().copied().collect(),
+            matrix,
+        };
+        let results = lowest_eigenpairs(
+            &operator,
+            2,
+            &DavidsonConfig {
+                max_subspace: 4,
+                max_iterations: 10,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(results.len(), 2);
+        for (result, expected) in results.iter().zip(expected) {
+            assert!(result.converged);
+            assert!((result.energy - expected).abs() < 1e-10);
+            assert!(result.residual_norm < 1e-10);
+        }
+        assert!(dot(&results[0].eigenvector, &results[1].eigenvector).abs() < 1e-12);
+    }
+
+    #[test]
+    fn block_davidson_rejects_too_small_a_subspace() {
+        let matrix = DMatrix::identity(3, 3);
+        let operator = MatrixOperator {
+            diagonal: vec![1.0; 3],
+            matrix,
+        };
+        assert!(matches!(
+            lowest_eigenpairs(
+                &operator,
+                2,
+                &DavidsonConfig {
+                    max_subspace: 3,
+                    ..Default::default()
+                }
+            ),
+            Err(DavidsonError::RootSubspace {
+                roots: 2,
+                max_subspace: 3
+            })
+        ));
     }
 }
