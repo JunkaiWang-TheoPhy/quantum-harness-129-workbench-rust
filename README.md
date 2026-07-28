@@ -4,8 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.1.0)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
-**245,025 determinants. Direct Davidson FCI. Arbitrary-order CC. Direct
-integrals. One Rust workbench. RIIR!**
+**28,233,466-determinant extended FCI. Arbitrary-order CC. Direct integrals.
+One Rust workbench. RIIR!**
 
 [Quantum Harness challenge #129](https://github.com/QuantumBFS/quantum.harness/issues/129)
 asked for an exact-diagonalization workbench in Rust for electronic-structure
@@ -27,6 +27,8 @@ RHF, and FCI.
 |---|---|
 | Full H2O/6-31G frozen-core space | **245,025 determinants** |
 | Direct Davidson FCI | `-76.121174204141980 E_h` |
+| Extended H2O/DZP frozen-core space | **28,233,466 determinants** |
+| Extended H2O/DZP Davidson FCI | **−76.256624441300147 Hartree** |
 | Hirata 2000 CC table | **CC(1)-CC(8): 8/8 entries matched** |
 | Hirata 2000 CI and MBPT tables | **28/28 entries matched** |
 | CC(8) distance from FCI | `7.998e-9 E_h` |
@@ -76,10 +78,12 @@ finite Taylor expansion remains as an independent small-system oracle.
 The Kállay 2001 all-electron DZ FCI extension is now reproduced with
 1,002,708 determinants in the target symmetry sector: Rust gives
 `-76.156699030930056` hartree versus PySCF
-`-76.156699030929800` hartree. The much larger frozen-core DZP calculation
-remains an extended target. No primary 6-31G result is presented as evidence
-for a different Hamiltonian. RIIR means rewriting the implementation—not
-rewriting the scientific claim.
+`-76.156699030929800` hartree. The frozen-core DZP extension is also complete:
+Rust converges the 28,233,466-determinant sector to
+−76.256624441300147 Hartree with a residual norm of 9.342 × 10⁻⁸, matching the
+six decimals printed by Kállay 2001. No primary 6-31G result is presented as
+evidence for a different Hamiltonian. RIIR means rewriting the
+implementation—not rewriting the scientific claim.
 
 ## Quick Start
 
@@ -102,6 +106,13 @@ Reproduce the all-electron H2O/DZ extension:
 ```bash
 cargo run --release -- davidson fixtures/h2o-dz-ae/FCIDUMP \
   --residual-tolerance 1e-7 --max-iterations 40 --max-subspace 20
+```
+
+Reproduce the frozen-core H2O/DZP extension (about 18 minutes and 7 GB):
+
+```bash
+cargo run --release -- davidson fixtures/h2o-dzp-fc/FCIDUMP \
+  --residual-tolerance 1e-7 --max-iterations 40 --max-subspace 6
 ```
 
 Reproduce the 2.0 Rₑ stretched-water CC sequence:
@@ -349,6 +360,9 @@ active interpreter rather than `.venv`.
   pipeline and element-level PySCF comparisons.
 - [Extended H2O/DZ report](reports/extended-h2o-dz.md) — exact historical
   basis/geometry reproduction and million-determinant all-electron FCI.
+- [Extended H2O/DZP report](reports/extended-h2o-dzp.md) — compact
+  28,233,466-determinant indexing, sigma-kernel scaling, and converged
+  frozen-core FCI.
 - [Stretched-water report](reports/stretched-water.md) — independent
   Davidson FCI and CC(1)-CC(8) checks at 1.5 Rₑ and 2.0 Rₑ.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
