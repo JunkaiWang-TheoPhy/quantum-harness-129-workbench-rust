@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::Path;
 
-use ed_workbench_rs::coupled_cluster::{CcConfig, CcError, solve_cc, solve_cc_series};
+use ed_workbench_rs::coupled_cluster::{
+    CcConfig, CcError, CcTermination, solve_cc, solve_cc_series,
+};
 use ed_workbench_rs::direct_fci::DirectFciOperator;
 use ed_workbench_rs::fcidump::Fcidump;
 use ed_workbench_rs::problem::ElectronicProblem;
@@ -111,4 +113,93 @@ fn cc_series_rejects_ranks_outside_the_active_electron_space() {
             maximum: 2
         })
     ));
+}
+
+#[test]
+fn rejects_invalid_cc_configuration_before_iteration() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h2-sto3g");
+    let dump = Fcidump::parse(&fs::read_to_string(root.join("FCIDUMP")).unwrap()).unwrap();
+    let reference = Reference::load(&root.join("reference.json")).unwrap();
+    let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump).unwrap()).unwrap();
+
+    for (field, config) in [
+        (
+            "residual_tolerance",
+            CcConfig {
+                residual_tolerance: f64::NAN,
+                ..Default::default()
+            },
+        ),
+        (
+            "energy_tolerance",
+            CcConfig {
+                energy_tolerance: 0.0,
+                ..Default::default()
+            },
+        ),
+        (
+            "max_iterations",
+            CcConfig {
+                max_iterations: 0,
+                ..Default::default()
+            },
+        ),
+        (
+            "diis_history",
+            CcConfig {
+                diis_history: 0,
+                ..Default::default()
+            },
+        ),
+        (
+            "exponential_threshold",
+            CcConfig {
+                exponential_threshold: -1.0,
+                ..Default::default()
+            },
+        ),
+    ] {
+        assert!(matches!(
+            solve_cc(
+                &operator,
+                2,
+                &reference.active_orbital_energies,
+                &config
+            ),
+            Err(CcError::InvalidConfig {
+                field: actual,
+                ..
+            }) if actual == field
+        ));
+    }
+}
+
+#[test]
+fn reports_explicit_cc_termination() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h2-sto3g");
+    let dump = Fcidump::parse(&fs::read_to_string(root.join("FCIDUMP")).unwrap()).unwrap();
+    let reference = Reference::load(&root.join("reference.json")).unwrap();
+    let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump).unwrap()).unwrap();
+
+    let converged = solve_cc(
+        &operator,
+        2,
+        &reference.active_orbital_energies,
+        &CcConfig::default(),
+    )
+    .unwrap();
+    assert_eq!(converged.termination, CcTermination::Converged);
+
+    let stopped = solve_cc(
+        &operator,
+        2,
+        &reference.active_orbital_energies,
+        &CcConfig {
+            max_iterations: 1,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(stopped.termination, CcTermination::MaximumIterations);
+    assert!(!stopped.converged);
 }

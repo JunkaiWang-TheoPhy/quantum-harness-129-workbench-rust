@@ -28,6 +28,29 @@ struct CommittedRank {
     published_match: bool,
 }
 
+#[derive(Deserialize)]
+struct GeneratedSeries {
+    schema_version: u32,
+    artifact_kind: String,
+    system: String,
+    energy_unit: String,
+    fci_reference_energy: f64,
+    results: Vec<GeneratedRank>,
+    published_verification: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct GeneratedRank {
+    rank: usize,
+    energy: f64,
+    method_minus_fci: f64,
+    iterations: usize,
+    residual_norm: f64,
+    converged: bool,
+    termination: String,
+    published_difference: Option<f64>,
+}
+
 #[test]
 fn cc_series_cli_reports_every_requested_rank() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h4-sto3g");
@@ -87,6 +110,55 @@ fn committed_primary_cc_series_covers_octuple_excitations() {
     }
     assert!((committed.results[1].energy - reference.ccsd_total_energy.unwrap()).abs() < 1e-8);
     assert!((committed.results[7].energy - reference.fci_energy).abs() < 1e-6);
+}
+
+#[test]
+fn cc_series_json_has_a_stable_numerical_contract() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h4-sto3g");
+    let output_path = std::env::temp_dir().join(format!(
+        "ed-workbench-cc-series-{}.json",
+        std::process::id()
+    ));
+    let output = Command::new(env!("CARGO_BIN_EXE_ed_workbench_rs"))
+        .arg("cc-series")
+        .arg(root.join("FCIDUMP"))
+        .arg(root.join("reference.json"))
+        .arg("--max-rank")
+        .arg("2")
+        .arg("--residual-tolerance")
+        .arg("1e-8")
+        .arg("--json-output")
+        .arg(&output_path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let generated: GeneratedSeries =
+        serde_json::from_slice(&fs::read(&output_path).unwrap()).unwrap();
+    fs::remove_file(output_path).unwrap();
+    let reference = Reference::load(&root.join("reference.json")).unwrap();
+
+    assert_eq!(generated.schema_version, 1);
+    assert_eq!(generated.artifact_kind, "cc-series");
+    assert_eq!(generated.system, reference.system);
+    assert_eq!(generated.energy_unit, "hartree");
+    assert_eq!(generated.fci_reference_energy, reference.fci_energy);
+    assert_eq!(generated.results.len(), 2);
+    assert_eq!(generated.published_verification, None);
+    for (index, rank) in generated.results.iter().enumerate() {
+        assert_eq!(rank.rank, index + 1);
+        assert!(rank.energy.is_finite());
+        assert!((rank.energy - reference.fci_energy - rank.method_minus_fci).abs() < 1e-12);
+        assert!(rank.iterations > 0);
+        assert!(rank.residual_norm.is_finite());
+        assert!(rank.converged);
+        assert_eq!(rank.termination, "converged");
+        assert_eq!(rank.published_difference, None);
+    }
 }
 
 #[test]

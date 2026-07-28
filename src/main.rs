@@ -8,7 +8,7 @@ use ed_workbench_rs::ao2mo::transform_to_mo;
 use ed_workbench_rs::benchmark::{
     BoundedBenchmarkConfig, BoundedBenchmarkResult, run_h2o_cc_pvdz_benchmark,
 };
-use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc, solve_cc_series};
+use ed_workbench_rs::coupled_cluster::{CcConfig, CcTermination, solve_cc, solve_cc_series};
 use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
@@ -25,6 +25,7 @@ use ed_workbench_rs::reference::{Reference, sha256_hex};
 use ed_workbench_rs::rhf::{RhfConfig, solve_rhf};
 use ed_workbench_rs::truncated_ci::{solve_ci, solve_ci_series};
 use ed_workbench_rs::unitary_cc::UnitaryCcModel;
+use serde::Serialize;
 
 #[derive(Debug, Parser)]
 #[command(name = "ed-workbench-rs")]
@@ -72,6 +73,8 @@ enum Command {
         residual_tolerance: f64,
         #[arg(long, default_value_t = 100)]
         max_iterations: usize,
+        #[arg(long)]
+        json_output: Option<PathBuf>,
     },
     Ci {
         fcidump: PathBuf,
@@ -157,6 +160,33 @@ enum DirectSystem {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum BenchmarkSystem {
     H2oCcPvdz,
+}
+
+#[derive(Debug, Serialize)]
+struct CcSeriesJson {
+    schema_version: u32,
+    artifact_kind: &'static str,
+    system: String,
+    energy_unit: &'static str,
+    fci_reference_energy: f64,
+    config: CcConfig,
+    results: Vec<CcRankJson>,
+    published_verification: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+struct CcRankJson {
+    rank: usize,
+    energy: f64,
+    method_minus_fci: f64,
+    iterations: usize,
+    residual_norm: f64,
+    elapsed_seconds: f64,
+    converged: bool,
+    termination: CcTermination,
+    published_difference: Option<f64>,
+    published_error: Option<f64>,
+    published_match: Option<bool>,
 }
 
 impl DirectSystem {
@@ -285,6 +315,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             max_rank,
             residual_tolerance,
             max_iterations,
+            json_output,
         } => {
             let bytes = fs::read(&fcidump)?;
             let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
@@ -297,16 +328,17 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             if let Some(table) = &published {
                 validate_hirata_context(table, &reference, &operator)?;
             }
+            let cc_config = CcConfig {
+                residual_tolerance,
+                energy_tolerance: residual_tolerance * 0.01,
+                max_iterations,
+                ..Default::default()
+            };
             let series = solve_cc_series(
                 &operator,
                 max_rank,
                 &reference.active_orbital_energies,
-                &CcConfig {
-                    residual_tolerance,
-                    energy_tolerance: residual_tolerance * 0.01,
-                    max_iterations,
-                    ..Default::default()
-                },
+                &cc_config,
             )?;
 
             println!("system: {}", reference.system);
@@ -315,6 +347,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "rank\tenergy_hartree\tmethod_minus_fci_hartree\titerations\tresidual\telapsed_seconds\tconverged\tpublished_difference\tpublished_error\tpublished_match"
             );
             let mut published_matches = true;
+            let mut json_results = Vec::with_capacity(series.len());
             for entry in &series {
                 let difference = entry.result.energy - reference.fci_energy;
                 let iterations = entry.result.iterations.len();
@@ -326,6 +359,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     let matches =
                         rounded_published_match(difference, expected, table.printed_decimals);
                     published_matches &= matches;
+                    json_results.push(CcRankJson {
+                        rank: entry.rank,
+                        energy: entry.result.energy,
+                        method_minus_fci: difference,
+                        iterations,
+                        residual_norm: entry.result.residual_norm,
+                        elapsed_seconds: entry.elapsed.as_secs_f64(),
+                        converged: entry.result.converged,
+                        termination: entry.result.termination,
+                        published_difference: Some(expected),
+                        published_error: Some(error),
+                        published_match: Some(matches),
+                    });
                     println!(
                         "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t{:.6}\t{:.3e}\t{}",
                         entry.rank,
@@ -340,6 +386,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         matches
                     );
                 } else {
+                    json_results.push(CcRankJson {
+                        rank: entry.rank,
+                        energy: entry.result.energy,
+                        method_minus_fci: difference,
+                        iterations,
+                        residual_norm: entry.result.residual_norm,
+                        elapsed_seconds: entry.elapsed.as_secs_f64(),
+                        converged: entry.result.converged,
+                        termination: entry.result.termination,
+                        published_difference: None,
+                        published_error: None,
+                        published_match: None,
+                    });
                     println!(
                         "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t-\t-\t-",
                         entry.rank,
@@ -364,6 +423,27 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         "FAIL"
                     }
                 );
+            }
+            if let Some(path) = json_output {
+                if let Some(parent) = path.parent()
+                    && !parent.as_os_str().is_empty()
+                {
+                    fs::create_dir_all(parent)?;
+                }
+                let summary = CcSeriesJson {
+                    schema_version: 1,
+                    artifact_kind: "cc-series",
+                    system: reference.system.clone(),
+                    energy_unit: "hartree",
+                    fci_reference_energy: reference.fci_energy,
+                    config: cc_config,
+                    results: json_results,
+                    published_verification: published
+                        .as_ref()
+                        .map(|_| published_matches && converged),
+                };
+                fs::write(&path, serde_json::to_vec_pretty(&summary)?)?;
+                println!("JSON output: {}", path.display());
             }
             if !converged {
                 return Err(format!("CC series stopped before converged CC({max_rank})").into());
