@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use thiserror::Error;
 
 use crate::problem::ElectronicProblem;
@@ -29,10 +27,12 @@ pub struct DeterminantBasis {
     pub nbeta: usize,
     pub alpha_strings: Vec<u64>,
     pub beta_strings: Vec<u64>,
-    pub determinants: Vec<u64>,
-    string_pairs: Vec<(usize, usize)>,
-    pair_addresses: Vec<usize>,
-    addresses: HashMap<u64, usize>,
+    alpha_irreps: Vec<usize>,
+    beta_irreps: Vec<usize>,
+    beta_indices_by_irrep: Vec<Vec<usize>>,
+    beta_ranks_within_irrep: Vec<usize>,
+    alpha_offsets: Vec<usize>,
+    target_irrep: usize,
 }
 
 impl DeterminantBasis {
@@ -94,86 +94,114 @@ impl DeterminantBasis {
         let nbeta = (nbeta_twice / 2) as usize;
         let alpha_strings = occupation_strings(norb, nalpha)?;
         let beta_strings = occupation_strings(norb, nbeta)?;
-        let alpha_irreps = symmetry.map(|(orbsym, _)| {
-            alpha_strings
-                .iter()
-                .map(|&bits| string_irrep(bits, orbsym))
-                .collect::<Vec<_>>()
-        });
-        let beta_irreps = symmetry.map(|(orbsym, _)| {
-            beta_strings
-                .iter()
-                .map(|&bits| string_irrep(bits, orbsym))
-                .collect::<Vec<_>>()
-        });
-        let mut determinants = Vec::with_capacity(alpha_strings.len() * beta_strings.len());
-        let mut string_pairs = Vec::with_capacity(alpha_strings.len() * beta_strings.len());
-        let mut pair_addresses = vec![usize::MAX; alpha_strings.len() * beta_strings.len()];
-        for (alpha_index, &alpha) in alpha_strings.iter().enumerate() {
-            for (beta_index, &beta) in beta_strings.iter().enumerate() {
-                if let Some((_, isym)) = symmetry
-                    && molpro_irrep_product(
-                        alpha_irreps.as_ref().expect("symmetry irreps")[alpha_index],
-                        beta_irreps.as_ref().expect("symmetry irreps")[beta_index],
-                    ) != isym
-                {
-                    continue;
-                }
-                let address = determinants.len();
-                determinants.push(alpha | (beta << norb));
-                string_pairs.push((alpha_index, beta_index));
-                pair_addresses[alpha_index * beta_strings.len() + beta_index] = address;
-            }
-        }
-        if let Some((_, isym)) = symmetry
-            && determinants.is_empty()
-        {
-            return Err(DeterminantError::EmptySymmetrySector(isym));
-        }
-        let addresses = determinants
+        let target_irrep = symmetry.map_or(1, |(_, isym)| isym);
+        let alpha_irreps = alpha_strings
             .iter()
-            .enumerate()
-            .map(|(index, &det)| (det, index))
-            .collect();
+            .map(|&bits| symmetry.map_or(1, |(orbsym, _)| string_irrep(bits, orbsym)))
+            .collect::<Vec<_>>();
+        let beta_irreps = beta_strings
+            .iter()
+            .map(|&bits| symmetry.map_or(1, |(orbsym, _)| string_irrep(bits, orbsym)))
+            .collect::<Vec<_>>();
+        let mut beta_indices_by_irrep = vec![Vec::new(); 8];
+        let mut beta_ranks_within_irrep = vec![0; beta_strings.len()];
+        for (beta_index, &irrep) in beta_irreps.iter().enumerate() {
+            beta_ranks_within_irrep[beta_index] = beta_indices_by_irrep[irrep - 1].len();
+            beta_indices_by_irrep[irrep - 1].push(beta_index);
+        }
+        let mut alpha_offsets = Vec::with_capacity(alpha_strings.len() + 1);
+        alpha_offsets.push(0);
+        for &alpha_irrep in &alpha_irreps {
+            let required_beta_irrep = molpro_irrep_product(alpha_irrep, target_irrep);
+            let next = alpha_offsets.last().copied().unwrap()
+                + beta_indices_by_irrep[required_beta_irrep - 1].len();
+            alpha_offsets.push(next);
+        }
+        if alpha_offsets.last() == Some(&0) {
+            return Err(DeterminantError::EmptySymmetrySector(target_irrep));
+        }
         Ok(Self {
             norb,
             nalpha,
             nbeta,
             alpha_strings,
             beta_strings,
-            determinants,
-            string_pairs,
-            pair_addresses,
-            addresses,
+            alpha_irreps,
+            beta_irreps,
+            beta_indices_by_irrep,
+            beta_ranks_within_irrep,
+            alpha_offsets,
+            target_irrep,
         })
     }
 
     pub fn address(&self, determinant: u64) -> Option<usize> {
-        self.addresses.get(&determinant).copied()
+        let orbital_mask = (1_u64 << self.norb) - 1;
+        let alpha = determinant & orbital_mask;
+        let beta = determinant >> self.norb;
+        if beta >> self.norb != 0 {
+            return None;
+        }
+        let alpha_index = self.alpha_strings.binary_search(&alpha).ok()?;
+        let beta_index = self.beta_strings.binary_search(&beta).ok()?;
+        self.pair_address(alpha_index, beta_index)
     }
 
     pub fn string_pair(&self, address: usize) -> Option<(usize, usize)> {
-        self.string_pairs.get(address).copied()
+        if address >= self.len() {
+            return None;
+        }
+        let alpha = self
+            .alpha_offsets
+            .partition_point(|&offset| offset <= address)
+            - 1;
+        let beta_irrep = molpro_irrep_product(self.alpha_irreps[alpha], self.target_irrep);
+        let rank = address - self.alpha_offsets[alpha];
+        let beta = self.beta_indices_by_irrep[beta_irrep - 1][rank];
+        Some((alpha, beta))
     }
 
     pub fn pair_address(&self, alpha: usize, beta: usize) -> Option<usize> {
         if alpha >= self.alpha_strings.len() || beta >= self.beta_strings.len() {
             return None;
         }
-        let address = self.pair_addresses[alpha * self.beta_strings.len() + beta];
-        (address != usize::MAX).then_some(address)
+        if molpro_irrep_product(self.alpha_irreps[alpha], self.beta_irreps[beta])
+            != self.target_irrep
+        {
+            return None;
+        }
+        Some(self.alpha_offsets[alpha] + self.beta_ranks_within_irrep[beta])
     }
 
-    pub fn string_pairs(&self) -> &[(usize, usize)] {
-        &self.string_pairs
+    pub fn string_pairs(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
+        self.alpha_irreps
+            .iter()
+            .enumerate()
+            .flat_map(move |(alpha, &alpha_irrep)| {
+                let beta_irrep = molpro_irrep_product(alpha_irrep, self.target_irrep);
+                self.beta_indices_by_irrep[beta_irrep - 1]
+                    .iter()
+                    .copied()
+                    .map(move |beta| (alpha, beta))
+            })
+    }
+
+    pub fn determinant(&self, address: usize) -> Option<u64> {
+        let (alpha, beta) = self.string_pair(address)?;
+        Some(self.alpha_strings[alpha] | (self.beta_strings[beta] << self.norb))
+    }
+
+    pub fn determinants(&self) -> impl Iterator<Item = u64> + '_ {
+        self.string_pairs()
+            .map(|(alpha, beta)| self.alpha_strings[alpha] | (self.beta_strings[beta] << self.norb))
     }
 
     pub fn len(&self) -> usize {
-        self.determinants.len()
+        self.alpha_offsets.last().copied().unwrap_or(0)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.determinants.is_empty()
+        self.len() == 0
     }
 }
 
@@ -199,14 +227,34 @@ pub fn occupation_strings(orbitals: usize, electrons: usize) -> Result<Vec<u64>,
             orbitals,
         });
     }
-    let limit = if orbitals == 64 {
-        u64::MAX
-    } else {
-        1_u64 << orbitals
-    };
-    Ok((0..limit)
-        .filter(|bits| bits.count_ones() as usize == electrons)
-        .collect())
+    if electrons == 0 {
+        return Ok(vec![0]);
+    }
+    if electrons == orbitals {
+        return Ok(vec![if orbitals == 64 {
+            u64::MAX
+        } else {
+            (1_u64 << orbitals) - 1
+        }]);
+    }
+
+    // Gosper's hack enumerates only the C(orbitals, electrons) valid strings,
+    // in the same numeric lexical order as filtering all 2^orbitals bitsets.
+    let limit = (orbitals < 64).then(|| 1_u64 << orbitals);
+    let mut bits = (1_u64 << electrons) - 1;
+    let mut strings = Vec::new();
+    loop {
+        if limit.is_some_and(|limit| bits >= limit) {
+            break;
+        }
+        strings.push(bits);
+        let least_bit = bits & bits.wrapping_neg();
+        let Some(ripple) = bits.checked_add(least_bit) else {
+            break;
+        };
+        bits = (((ripple ^ bits) >> 2) / least_bit) | ripple;
+    }
+    Ok(strings)
 }
 
 pub fn apply_annihilation(determinant: u64, orbital: usize) -> Option<(u64, f64)> {
@@ -255,7 +303,7 @@ mod tests {
         assert_eq!(basis.nalpha, 1);
         assert_eq!(basis.nbeta, 1);
         assert_eq!(basis.len(), 4);
-        for &det in &basis.determinants {
+        for det in basis.determinants() {
             assert_eq!((det & 0b11).count_ones(), 1);
             assert_eq!((det >> 2).count_ones(), 1);
             assert!(basis.address(det).is_some());
@@ -266,12 +314,37 @@ mod tests {
     fn filters_to_the_requested_molpro_symmetry_sector() {
         let basis = DeterminantBasis::with_symmetry(2, 2, 0, &[1, 2], 1).unwrap();
         assert_eq!(basis.len(), 2);
-        assert_eq!(basis.string_pairs(), &[(0, 0), (1, 1)]);
+        assert_eq!(basis.string_pairs().collect::<Vec<_>>(), [(0, 0), (1, 1)]);
         assert_eq!(basis.pair_address(0, 0), Some(0));
         assert_eq!(basis.pair_address(0, 1), None);
         assert_eq!(basis.pair_address(1, 1), Some(1));
         assert_eq!(basis.address(0b0101), Some(0));
         assert_eq!(basis.address(0b1010), Some(1));
+    }
+
+    #[test]
+    fn dzp_symmetry_index_is_compact_and_has_the_expected_dimension() {
+        let orbsym = [
+            1, 3, 1, 2, 1, 3, 1, 2, 3, 1, 3, 1, 4, 1, 2, 3, 3, 1, 2, 4, 1, 1, 3, 1,
+        ];
+        let basis = DeterminantBasis::with_symmetry(24, 8, 0, &orbsym, 1).unwrap();
+        assert_eq!(basis.alpha_strings.len(), 10_626);
+        assert_eq!(basis.beta_strings.len(), 10_626);
+        assert_eq!(basis.len(), 28_233_466);
+
+        let indexing_bytes = (basis.alpha_strings.len()
+            + basis.beta_strings.len()
+            + basis.alpha_irreps.len()
+            + basis.beta_irreps.len()
+            + basis.beta_ranks_within_irrep.len()
+            + basis.alpha_offsets.len()
+            + basis
+                .beta_indices_by_irrep
+                .iter()
+                .map(Vec::len)
+                .sum::<usize>())
+            * std::mem::size_of::<usize>();
+        assert!(indexing_bytes < 1_000_000);
     }
 
     #[test]

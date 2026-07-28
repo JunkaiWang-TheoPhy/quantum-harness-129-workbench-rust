@@ -60,7 +60,7 @@ impl<'a> ClusterExpansionPlan<'a> {
 
         let maximum_rank = basis.nalpha + basis.nbeta;
         let mut targets_by_rank = vec![Vec::new(); maximum_rank + 1];
-        for (target, &determinant) in basis.determinants.iter().enumerate() {
+        for (target, determinant) in basis.determinants().enumerate() {
             let rank = (space.reference & !determinant).count_ones() as usize;
             targets_by_rank[rank].push(target);
         }
@@ -297,7 +297,10 @@ impl<'a> ClusterOperator<'a> {
             if coefficient == 0.0 {
                 continue;
             }
-            let source = self.basis.determinants[source_index];
+            let source = self
+                .basis
+                .determinant(source_index)
+                .expect("source address belongs to determinant basis");
             for (excitation, &amplitude) in
                 self.space.excitations.iter().zip(&self.amplitudes.values)
             {
@@ -467,8 +470,9 @@ mod tests {
                     let source = alpha.source_string * beta_count + beta.source_string;
                     let amplitude_index = amplitude_by_determinant[amplitude_determinant].unwrap();
                     let excitation = &space.excitations[amplitude_index];
-                    let (mapped, direct_phase) =
-                        excitation.apply(basis.determinants[source]).unwrap();
+                    let (mapped, direct_phase) = excitation
+                        .apply(basis.determinant(source).unwrap())
+                        .unwrap();
                     assert_eq!(basis.address(mapped), Some(target));
                     assert_eq!(direct_phase, f64::from(alpha.phase) * f64::from(beta.phase));
                 }

@@ -102,6 +102,7 @@ pub fn lowest_eigenpair(
             axpy(coefficients[k], &basis[k], &mut eigenvector);
             axpy(coefficients[k], &sigma_basis[k], &mut sigma);
         }
+        let restart_sigma = (basis.len() >= config.max_subspace).then(|| sigma.clone());
         let mut residual = sigma;
         axpy(-energy, &eigenvector, &mut residual);
         let residual_norm = norm(&residual);
@@ -121,6 +122,9 @@ pub fn lowest_eigenpair(
             return Ok(last_result);
         }
         previous_energy = energy;
+        if iteration == config.max_iterations {
+            return Ok(last_result);
+        }
 
         let mut correction = residual;
         for (index, value) in correction.iter_mut().enumerate() {
@@ -151,10 +155,11 @@ pub fn lowest_eigenpair(
 
         if basis.len() >= config.max_subspace {
             normalize(&mut eigenvector)?;
-            let mut restarted_sigma = vec![0.0; dimension];
-            operator.apply(&eigenvector, &mut restarted_sigma)?;
             basis = vec![eigenvector, correction];
-            sigma_basis = vec![restarted_sigma, correction_sigma];
+            sigma_basis = vec![
+                restart_sigma.expect("restart sigma was retained"),
+                correction_sigma,
+            ];
             orthonormalize_last(&mut basis, &mut sigma_basis);
         } else {
             basis.push(correction);

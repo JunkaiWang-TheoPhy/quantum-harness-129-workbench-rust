@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
 use ed_workbench_rs::direct_fci::DirectFciOperator;
@@ -62,4 +63,23 @@ fn h4_davidson_matches_pyscf() {
 #[test]
 fn h2o_sto3g_davidson_matches_pyscf() {
     davidson_fixture("h2o-sto3g", 1e-9);
+}
+
+#[test]
+fn sigma_benchmark_cli_reports_timing_and_checksum() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/h4-sto3g");
+    let output = Command::new(env!("CARGO_BIN_EXE_ed_workbench_rs"))
+        .arg("sigma-benchmark")
+        .arg(root.join("FCIDUMP"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("determinants: 36"));
+    assert!(stdout.contains("sigma apply seconds:"));
+    assert!(stdout.contains("weighted checksum:"));
 }

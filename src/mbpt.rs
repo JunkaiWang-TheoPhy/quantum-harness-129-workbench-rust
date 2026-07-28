@@ -44,7 +44,7 @@ pub fn solve_mbpt(
     let reference_energy = operator.diagonal()[reference_index];
     let mut h0 = vec![0.0; basis.len()];
     let mut denominators = vec![0.0; basis.len()];
-    for (index, &determinant) in basis.determinants.iter().enumerate() {
+    for (index, determinant) in basis.determinants().enumerate() {
         let holes = reference & !determinant;
         let particles = determinant & !reference;
         let hole_sum: f64 = bit_positions(holes)

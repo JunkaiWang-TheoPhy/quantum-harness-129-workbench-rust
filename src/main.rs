@@ -48,6 +48,9 @@ enum Command {
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
     },
+    SigmaBenchmark {
+        fcidump: PathBuf,
+    },
     Cc {
         fcidump: PathBuf,
         reference: PathBuf,
@@ -227,6 +230,32 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             if !result.converged {
                 return Err("Davidson did not converge".into());
             }
+        }
+        Command::SigmaBenchmark { fcidump } => {
+            let bytes = fs::read(&fcidump)?;
+            let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
+            let build_started = Instant::now();
+            let operator = DirectFciOperator::new(ElectronicProblem::from_fcidump(&dump)?)?;
+            let build_elapsed = build_started.elapsed();
+            let input: Vec<_> = (0..operator.dimension())
+                .map(|index| ((index * 17 + 3) as f64).sin())
+                .collect();
+            let mut output = vec![0.0; operator.dimension()];
+            let apply_started = Instant::now();
+            operator.apply(&input, &mut output)?;
+            let apply_elapsed = apply_started.elapsed();
+            let output_norm = output.iter().map(|value| value * value).sum::<f64>().sqrt();
+            let checksum = output
+                .iter()
+                .enumerate()
+                .map(|(index, value)| (index % 97 + 1) as f64 * value)
+                .sum::<f64>();
+            println!("determinants: {}", operator.dimension());
+            println!("rayon threads: {}", rayon::current_num_threads());
+            println!("operator build seconds: {:.6}", build_elapsed.as_secs_f64());
+            println!("sigma apply seconds: {:.6}", apply_elapsed.as_secs_f64());
+            println!("output norm: {:.15e}", output_norm);
+            println!("weighted checksum: {:.15e}", checksum);
         }
         Command::Cc {
             fcidump,

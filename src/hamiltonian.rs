@@ -7,7 +7,7 @@ pub fn build_dense_hamiltonian(dump: &Fcidump, basis: &DeterminantBasis) -> DMat
     let dimension = basis.len();
     let mut matrix = DMatrix::zeros(dimension, dimension);
 
-    for (column, &ket) in basis.determinants.iter().enumerate() {
+    for (column, ket) in basis.determinants().enumerate() {
         matrix[(column, column)] += dump.ecore;
 
         for p in 0..(2 * dump.norb) {

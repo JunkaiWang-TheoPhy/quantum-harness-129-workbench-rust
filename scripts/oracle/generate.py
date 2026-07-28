@@ -31,6 +31,8 @@ class System:
     geometry_parameters: tuple[tuple[str, float, str], ...] = ()
     frozen_orbitals: tuple[int, ...] = ()
     symmetry: bool = False
+    compute_fci: bool = True
+    published_fci_energy: float | None = None
 
 
 def bauschlicher_1986_basis(polarized: bool = False) -> dict[str, list[list[object]]]:
@@ -177,6 +179,30 @@ SYSTEMS = {
         ),
         symmetry=True,
     ),
+    "h2o-dzp-fc": System(
+        slug="h2o-dzp-fc",
+        name="H2O Bauschlicher DZP frozen core",
+        # Exact Table II Cartesian coordinates in Bohr.
+        atom="O 0 0 0; H 1.494187 0 1.156923; H -1.494187 0 1.156923",
+        basis="Bauschlicher 1986 DZP",
+        basis_definition="bauschlicher-1986-dzp",
+        basis_provenance=(
+            "Bauschlicher and Taylor, J. Chem. Phys. 85, 2779 (1986), "
+            "Table I; oxygen d exponent 1.2 and hydrogen p exponent 0.8; "
+            "DOI 10.1063/1.451034"
+        ),
+        coordinate_unit="Bohr",
+        geometry_parameters=(
+            ("R(O-H)", 1.889726334392893, "bohr"),
+            ("angle(H-O-H)", 104.50000893084858, "degree"),
+        ),
+        frozen_orbitals=(0,),
+        symmetry=True,
+        # The C2v block has 28,233,466 determinants. Do not launch a
+        # full-space PySCF FCI implicitly while regenerating fixtures.
+        compute_fci=False,
+        published_fci_energy=-76.256624,
+    ),
 }
 
 
@@ -248,15 +274,20 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
             tol=1e-15,
             float_format=" %.16g",
         )
-        cisolver = fci.direct_spin1.FCI()
-        cisolver.conv_tol = 1e-12
-        fci_energy, _ = cisolver.kernel(
-            active_h1,
-            active_eri,
-            len(active),
-            active_nelec,
-            ecore=ecore,
-        )
+        if system.compute_fci:
+            cisolver = fci.direct_spin1.FCI()
+            cisolver.conv_tol = 1e-12
+            fci_energy, _ = cisolver.kernel(
+                active_h1,
+                active_eri,
+                len(active),
+                active_nelec,
+                ecore=ecore,
+            )
+            fci_converged = bool(getattr(cisolver, "converged", True))
+        else:
+            fci_energy = None
+            fci_converged = False
     else:
         fcidump.from_scf(
             mf,
@@ -265,10 +296,14 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
             float_format=" %.16g",
             molpro_orbsym=system.symmetry,
         )
-        cisolver = fci.FCI(mf)
-        cisolver.conv_tol = 1e-12
-        fci_energy, _ = cisolver.kernel()
-    fci_converged = bool(getattr(cisolver, "converged", True))
+        if system.compute_fci:
+            cisolver = fci.FCI(mf)
+            cisolver.conv_tol = 1e-12
+            fci_energy, _ = cisolver.kernel()
+            fci_converged = bool(getattr(cisolver, "converged", True))
+        else:
+            fci_energy = None
+            fci_converged = False
 
     ccsd = cc.CCSD(mf, frozen=list(frozen) or None)
     ccsd.conv_tol = 1e-12
@@ -312,7 +347,6 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "fci_converged": fci_converged,
         "ccsd_converged": bool(ccsd.converged),
         "hf_energy": hf_energy,
-        "fci_energy": float(fci_energy),
         "ccsd_correlation_energy": float(correlation_energy),
         "ccsd_total_energy": ccsd_total_energy,
         "mp2_correlation_energy": float(mp2_correlation_energy),
@@ -320,9 +354,15 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "fcidump_sha256": sha256(dump_path),
         "generator": "scripts/oracle/generate.py",
         "energy_unit": "hartree",
+        "fci_status": "computed" if system.compute_fci else "skipped-size-guard",
+        "published_fci_energy": system.published_fci_energy,
     }
+    if fci_energy is not None:
+        reference["fci_energy"] = float(fci_energy)
     reference[f"geometry_{system.coordinate_unit.lower()}"] = system.atom
-    reference_path = output_dir / "reference.json"
+    reference_path = output_dir / (
+        "reference.json" if system.compute_fci else "generation_metadata.json"
+    )
     reference_path.write_text(
         json.dumps(reference, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -341,7 +381,7 @@ def generate(system: System, fixtures_root: Path) -> dict[str, object]:
         "hcore": [float(value) for value in mf.get_hcore().ravel()],
         "eri_ao": [float(value) for value in mol.intor("int2e").ravel()],
         "rhf_total_energy": hf_energy,
-        "fci_energy": float(fci_energy),
+        "fci_energy": float(fci_energy) if fci_energy is not None else None,
         "orbital_energies": [float(value) for value in mf.mo_energy],
         "mo_coefficients": [float(value) for value in mf.mo_coeff.ravel()],
         "h1_mo": [float(value) for value in mo_h1.ravel()],
@@ -372,9 +412,14 @@ def main() -> int:
     selected_systems = args.systems or sorted(SYSTEMS)
     for slug in selected_systems:
         reference = generate(SYSTEMS[slug], args.fixtures_root)
+        fci_display = (
+            f"{reference['fci_energy']:.12f}"
+            if "fci_energy" in reference
+            else "skipped-size-guard"
+        )
         print(
             f"{slug}: HF={reference['hf_energy']:.12f} "
-            f"FCI={reference['fci_energy']:.12f} "
+            f"FCI={fci_display} "
             f"CCSD={reference['ccsd_total_energy']:.12f}"
         )
     return 0

@@ -23,10 +23,9 @@ impl<'a> ProjectedOperator<'a> {
         let basis = DeterminantBasis::from_problem(problem)?;
         let reference = hartree_fock_reference(problem.norb, basis.nalpha, basis.nbeta);
         let selected: Vec<_> = basis
-            .determinants
-            .iter()
+            .determinants()
             .enumerate()
-            .filter(|(_, determinant)| (reference & !**determinant).count_ones() as usize <= rank)
+            .filter(|(_, determinant)| (reference & !*determinant).count_ones() as usize <= rank)
             .map(|(index, _)| index)
             .collect();
         let diagonal = selected

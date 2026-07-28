@@ -77,3 +77,17 @@ This system uses the exact Bohr coordinates and printed O `(9s5p)/[4s2p]` and
 H `(4s)/[2s]` contractions from Bauschlicher and Taylor 1986, not a similarly
 named modern basis. Spatial symmetry is enabled and exported with
 `molpro_orbsym=True`.
+
+The frozen-core H2O/DZP input can be regenerated safely with:
+
+```bash
+uv run --frozen python scripts/oracle/generate.py h2o-dzp-fc
+```
+
+It adds the printed oxygen d polarization exponent 1.2 and hydrogen p
+polarization exponent 0.8, then freezes the oxygen 1s orbital. The resulting
+C₂ᵥ block contains 28,233,466 determinants. Fixture generation computes RHF,
+MP2, CCSD, integrals, and checksums, but deliberately does not start PySCF FCI.
+The size guard is explicit in `generation_metadata.json`; the literature FCI
+anchor is stored separately and is not represented as a high-precision PySCF
+result.

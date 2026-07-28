@@ -55,7 +55,7 @@ impl ExcitationSpace {
             .address(reference)
             .ok_or(ExcitationError::MissingReference)?;
         let mut excitations = Vec::new();
-        for (determinant_index, &target) in basis.determinants.iter().enumerate() {
+        for (determinant_index, target) in basis.determinants().enumerate() {
             if target == reference {
                 continue;
             }

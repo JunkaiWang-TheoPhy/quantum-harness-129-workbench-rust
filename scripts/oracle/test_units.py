@@ -107,7 +107,8 @@ class GeometryUnitTests(unittest.TestCase):
     def test_committed_references_expose_units_and_geometry_parameters(self) -> None:
         fixtures_root = Path(__file__).resolve().parents[2] / "fixtures"
         for slug, system in SYSTEMS.items():
-            reference_path = fixtures_root / slug / "reference.json"
+            filename = "reference.json" if system.compute_fci else "generation_metadata.json"
+            reference_path = fixtures_root / slug / filename
             reference = json.loads(reference_path.read_text(encoding="utf-8"))
             self.assertEqual(
                 reference["coordinate_unit"], system.coordinate_unit.lower()
@@ -144,6 +145,27 @@ class GeometryUnitTests(unittest.TestCase):
         self.assertAlmostEqual(distance, 1.889726334392893, places=12)
         self.assertAlmostEqual(angle_degrees, 104.50000893084858, places=12)
         self.assertEqual(molecule.nao_nr(), 14)
+
+    def test_bauschlicher_dzp_adds_the_printed_polarization_and_freezes_core(
+        self,
+    ) -> None:
+        system = SYSTEMS["h2o-dzp-fc"]
+        basis = bauschlicher_1986_basis(polarized=True)
+        self.assertEqual(basis["H"][-1], [1, [0.8, 1.0]])
+        self.assertEqual(basis["O"][-1], [2, [1.2, 1.0]])
+        self.assertEqual(system.frozen_orbitals, (0,))
+        self.assertTrue(system.symmetry)
+        self.assertFalse(system.compute_fci)
+        self.assertEqual(system.published_fci_energy, -76.256624)
+
+        molecule = gto.M(
+            atom=system.atom,
+            basis=basis_for_system(system),
+            unit=system.coordinate_unit,
+            symmetry=system.symmetry,
+            verbose=0,
+        )
+        self.assertEqual(molecule.nao_nr(), 25)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,10 @@
+use rayon::prelude::*;
 use thiserror::Error;
 
 use crate::determinant::{DeterminantBasis, DeterminantError};
 use crate::operator::{LinearOperator, OperatorError};
 use crate::problem::{ElectronicProblem, index4};
-use crate::strings::{OneBodyLink, StringSpace, StringSpaceError};
+use crate::strings::{StringSpace, StringSpaceError};
 
 #[derive(Debug)]
 pub struct DirectFciOperator {
@@ -12,7 +13,15 @@ pub struct DirectFciOperator {
     pub alpha: StringSpace,
     pub beta: StringSpace,
     effective_eri: Vec<f64>,
+    alpha_same_spin: Vec<Vec<SameSpinTransition>>,
+    beta_same_spin: Option<Vec<Vec<SameSpinTransition>>>,
     diagonal: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SameSpinTransition {
+    target: usize,
+    coefficient: f64,
 }
 
 #[derive(Debug, Error)]
@@ -36,6 +45,9 @@ impl DirectFciOperator {
         let beta = StringSpace::new(problem.norb, (nbeta_twice / 2) as usize)?;
         let basis = DeterminantBasis::from_problem(&problem)?;
         let effective_eri = absorb_one_body(&problem);
+        let alpha_same_spin = same_spin_transitions(problem.norb, &effective_eri, &alpha);
+        let beta_same_spin = (alpha.nelec != beta.nelec)
+            .then(|| same_spin_transitions(problem.norb, &effective_eri, &beta));
         let diagonal = hamiltonian_diagonal(&problem, &alpha, &beta, &basis);
         Ok(Self {
             problem,
@@ -43,6 +55,8 @@ impl DirectFciOperator {
             alpha,
             beta,
             effective_eri,
+            alpha_same_spin,
+            beta_same_spin,
             diagonal,
         })
     }
@@ -59,22 +73,53 @@ impl DirectFciOperator {
         self.effective_eri[index4(self.problem.norb, p, q, r, s)]
     }
 
-    fn add_link_pair(
+    fn apply_source(
         &self,
+        source: usize,
+        alpha_source: usize,
+        beta_source: usize,
         coefficient: f64,
-        first: &OneBodyLink,
-        second: &OneBodyLink,
-        destination: usize,
         output: &mut [f64],
     ) {
-        let integral = self.g(
-            second.created,
-            second.annihilated,
-            first.created,
-            first.annihilated,
-        );
-        output[destination] +=
-            coefficient * integral * f64::from(first.sign) * f64::from(second.sign);
+        if coefficient == 0.0 {
+            return;
+        }
+        output[source] += self.problem.ecore * coefficient;
+
+        for transition in &self.alpha_same_spin[alpha_source] {
+            if let Some(destination) = self.basis.pair_address(transition.target, beta_source) {
+                output[destination] += coefficient * transition.coefficient;
+            }
+        }
+        let beta_same_spin = self
+            .beta_same_spin
+            .as_ref()
+            .unwrap_or(&self.alpha_same_spin);
+        for transition in &beta_same_spin[beta_source] {
+            if let Some(destination) = self.basis.pair_address(alpha_source, transition.target) {
+                output[destination] += coefficient * transition.coefficient;
+            }
+        }
+
+        for first in self.alpha.outgoing(alpha_source) {
+            for second in self.beta.outgoing(beta_source) {
+                if let Some(destination) = self.basis.pair_address(first.target, second.target) {
+                    let integral = self.g(
+                        second.created,
+                        second.annihilated,
+                        first.created,
+                        first.annihilated,
+                    ) + self.g(
+                        first.created,
+                        first.annihilated,
+                        second.created,
+                        second.annihilated,
+                    );
+                    output[destination] +=
+                        coefficient * integral * f64::from(first.sign) * f64::from(second.sign);
+                }
+            }
+        }
     }
 }
 
@@ -102,43 +147,85 @@ impl LinearOperator for DirectFciOperator {
             });
         }
         output.fill(0.0);
-        for (source, &(alpha_source, beta_source)) in self.basis.string_pairs().iter().enumerate() {
-            let coefficient = input[source];
-            if coefficient == 0.0 {
-                continue;
+        let nonzero = input
+            .iter()
+            .filter(|&&coefficient| coefficient != 0.0)
+            .count();
+        let workers = rayon::current_num_threads().min(dimension);
+        if dimension < 4_096 || nonzero < workers * 4 || nonzero < dimension / 64 || workers == 1 {
+            for (source, (alpha_source, beta_source)) in self.basis.string_pairs().enumerate() {
+                self.apply_source(source, alpha_source, beta_source, input[source], output);
             }
-            output[source] += self.problem.ecore * coefficient;
+            return Ok(());
+        }
 
-            for first in self.alpha.outgoing(alpha_source) {
-                for second in self.alpha.outgoing(first.target) {
-                    if let Some(destination) = self.basis.pair_address(second.target, beta_source) {
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
+        let chunk = dimension.div_ceil(workers);
+        let partials: Vec<Vec<f64>> = (0..workers)
+            .into_par_iter()
+            .map(|worker| {
+                let start = worker * chunk;
+                let end = (start + chunk).min(dimension);
+                let mut partial = vec![0.0; dimension];
+                for (source, &coefficient) in input.iter().enumerate().take(end).skip(start) {
+                    let (alpha_source, beta_source) = self
+                        .basis
+                        .string_pair(source)
+                        .expect("source address belongs to determinant basis");
+                    self.apply_source(source, alpha_source, beta_source, coefficient, &mut partial);
                 }
-                for second in self.beta.outgoing(beta_source) {
-                    if let Some(destination) = self.basis.pair_address(first.target, second.target)
-                    {
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                }
-            }
-            for first in self.beta.outgoing(beta_source) {
-                for second in self.alpha.outgoing(alpha_source) {
-                    if let Some(destination) = self.basis.pair_address(second.target, first.target)
-                    {
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                }
-                for second in self.beta.outgoing(first.target) {
-                    if let Some(destination) = self.basis.pair_address(alpha_source, second.target)
-                    {
-                        self.add_link_pair(coefficient, first, second, destination, output);
-                    }
-                }
+                partial
+            })
+            .collect();
+        for partial in partials {
+            for (destination, contribution) in output.iter_mut().zip(partial) {
+                *destination += contribution;
             }
         }
         Ok(())
     }
+}
+
+fn same_spin_transitions(
+    norb: usize,
+    effective_eri: &[f64],
+    strings: &StringSpace,
+) -> Vec<Vec<SameSpinTransition>> {
+    let mut result = Vec::with_capacity(strings.len());
+    let mut coefficients = vec![0.0; strings.len()];
+    let mut marks = vec![usize::MAX; strings.len()];
+    let mut touched = Vec::new();
+    for source in 0..strings.len() {
+        touched.clear();
+        for first in strings.outgoing(source) {
+            for second in strings.outgoing(first.target) {
+                let target = second.target;
+                if marks[target] != source {
+                    marks[target] = source;
+                    coefficients[target] = 0.0;
+                    touched.push(target);
+                }
+                let integral = effective_eri[index4(
+                    norb,
+                    second.created,
+                    second.annihilated,
+                    first.created,
+                    first.annihilated,
+                )];
+                coefficients[target] += integral * f64::from(first.sign) * f64::from(second.sign);
+            }
+        }
+        touched.sort_unstable();
+        result.push(
+            touched
+                .iter()
+                .map(|&target| SameSpinTransition {
+                    target,
+                    coefficient: coefficients[target],
+                })
+                .collect(),
+        );
+    }
+    result
 }
 
 fn absorb_one_body(problem: &ElectronicProblem) -> Vec<f64> {
@@ -175,30 +262,27 @@ fn hamiltonian_diagonal(
     basis: &DeterminantBasis,
 ) -> Vec<f64> {
     let mut result = Vec::with_capacity(basis.len());
-    for &(alpha_index, beta_index) in basis.string_pairs() {
+    for (alpha_index, beta_index) in basis.string_pairs() {
         let alpha_bits = alpha.strings[alpha_index];
         let beta_bits = beta.strings[beta_index];
         let mut energy = problem.ecore;
-        for spin in 0..2 {
-            let bits = if spin == 0 { alpha_bits } else { beta_bits };
-            for i in 0..problem.norb {
-                if bits & (1_u64 << i) != 0 {
-                    energy += problem.h1(i, i);
-                }
+        for mut occupied in [alpha_bits, beta_bits] {
+            while occupied != 0 {
+                let i = occupied.trailing_zeros() as usize;
+                energy += problem.h1(i, i);
+                occupied &= occupied - 1;
             }
         }
-        for spin_i in 0..2 {
-            let bits_i = if spin_i == 0 { alpha_bits } else { beta_bits };
-            for i in 0..problem.norb {
-                if bits_i & (1_u64 << i) == 0 {
-                    continue;
-                }
-                for spin_j in 0..2 {
-                    let bits_j = if spin_j == 0 { alpha_bits } else { beta_bits };
-                    for j in 0..problem.norb {
-                        if bits_j & (1_u64 << j) == 0 {
-                            continue;
-                        }
+        for (spin_i, bits_i) in [alpha_bits, beta_bits].into_iter().enumerate() {
+            let mut occupied_i = bits_i;
+            while occupied_i != 0 {
+                let i = occupied_i.trailing_zeros() as usize;
+                occupied_i &= occupied_i - 1;
+                for (spin_j, bits_j) in [alpha_bits, beta_bits].into_iter().enumerate() {
+                    let mut occupied_j = bits_j;
+                    while occupied_j != 0 {
+                        let j = occupied_j.trailing_zeros() as usize;
+                        occupied_j &= occupied_j - 1;
                         energy += 0.5 * problem.eri(i, i, j, j);
                         if spin_i == spin_j {
                             energy -= 0.5 * problem.eri(i, j, j, i);
