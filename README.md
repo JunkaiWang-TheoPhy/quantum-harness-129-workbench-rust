@@ -105,6 +105,25 @@ converged H2O/cc-pVDZ all-electron full FCI. See the
 [v0.3.0 release notes](docs/release-notes-v0.3.0.md) and
 [checkpoint format](docs/checkpoint-format.md).
 
+v0.4 adds deterministic, budgeted CPU parallelism to direct-FCI sigma:
+
+- fixed source blocks make results independent of Rayon scheduling;
+- ordered reduction makes a fixed policy bitwise repeatable;
+- memory is preflighted before thread-local vectors are allocated;
+- strict mode rejects an insufficient budget; fallback mode explains why it
+  used serial execution;
+- serial remains the compatibility default.
+
+On the 245,025-determinant primary H2O/6-31G problem, four source blocks and
+10 Rayon workers reduced median sigma time from `14.181091542 s` to
+`4.381184834 s` across five fresh release processes—a measured **3.236817x**
+ratio of medians. Maximum serial/parallel difference was `5.969e-13`.
+
+Raw measurements live in
+[`parallel-sigma-m4.json`](fixtures/h2o-631g-fc/parallel-sigma-m4.json).
+See the [v0.4.0 release notes](docs/release-notes-v0.4.0.md) and
+[incremental validation report](reports/incremental-solver-validation.md).
+
 ## The Mission Is Complete
 
 The mandatory #129 path is complete on the primary H2O/6-31G frozen-core
@@ -392,8 +411,12 @@ active interpreter rather than `.venv`.
   combinadic, and CC diagnostic hardening.
 - [v0.3.0 release notes](docs/release-notes-v0.3.0.md) — restartable,
   disk-backed Davidson.
+- [v0.4.0 release notes](docs/release-notes-v0.4.0.md) — deterministic,
+  budgeted parallel sigma.
 - [Checkpoint format](docs/checkpoint-format.md) — schema, atomicity,
   validation, and memory planning.
+- [Incremental solver validation](reports/incremental-solver-validation.md) —
+  v0.2-v0.4 correctness, compatibility, and performance evidence.
 - [v0.1.0 release notes](docs/release-notes-v0.1.0.md) — immutable inputs,
   headline values, verification commands, and release scope.
 - [Sync log](docs/sync-log.md) — relationship between this workbench and the

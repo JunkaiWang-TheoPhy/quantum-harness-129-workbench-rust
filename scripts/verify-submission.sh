@@ -62,6 +62,20 @@ jq -e '
   .aggregate.maximum_peak_rss_bytes < 2147483648
 ' "$benchmark_summary_json" >/dev/null
 
+parallel_sigma_json=fixtures/h2o-631g-fc/parallel-sigma-m4.json
+jq -e '
+  .schema_version == 1 and
+  .artifact_kind == "h2o-631g-fc-parallel-sigma" and
+  .problem.determinants == 245025 and
+  .parallel_policy.source_blocks == 4 and
+  .parallel_policy.preflight_workspace_bytes == 7840800 and
+  (.runs | length) == 5 and
+  .aggregate.median_serial_seconds == 14.181091542 and
+  .aggregate.median_parallel_seconds == 4.381184834 and
+  .aggregate.ratio_of_medians > 3.2 and
+  .aggregate.maximum_serial_parallel_error < 1e-10
+' "$parallel_sigma_json" >/dev/null
+
 python_bin=${PYTHON:-.venv/bin/python}
 if [[ ! -x "$python_bin" ]] && ! command -v "$python_bin" >/dev/null 2>&1; then
   printf 'Python oracle environment not found: %s\n' "$python_bin" >&2
