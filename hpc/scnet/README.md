@@ -123,6 +123,22 @@ ssh SCNET 'cd /work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1 
 The array header is `0-17%18`; each task requests 56 CPUs.  Slurm can therefore
 allocate at most `18 × 56 = 1,008` CPUs to this array.
 
+If the individual solves finish before Slurm can launch all 18 array elements,
+run the replicate experiment:
+
+```bash
+ssh SCNET 'cd /work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1 &&
+  sbatch --parsable \
+    --export=ALL,QH129_ORCHESTRATION=$PWD \
+    davidson-replicates.sbatch'
+```
+
+It executes the same 18-case matrix, but repeats every case 12 times.  The 216
+solves provide cross-node timing distributions and test deterministic numerical
+repeatability while giving the scheduler enough time to establish full array
+concurrency.  No artificial delay is used.  Each task writes a `summary.tsv`
+plus the stdout, stderr, GNU time report, and hashes for every replicate.
+
 ## Failure and resubmission
 
 Every task writes an isolated directory below:
