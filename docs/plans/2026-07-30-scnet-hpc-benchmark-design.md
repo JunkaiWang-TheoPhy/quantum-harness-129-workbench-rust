@@ -41,6 +41,12 @@ compute nodes have no external DNS, so a connected machine creates a
 toolchain; scheduled builds run with Cargo `--offline`.  Record the commit,
 lockfile hash, compiler versions, operating system, and build-node metadata.
 
+Cargo compilation uses node-local `$SLURM_TMPDIR`: the job exports the pinned
+tree with `git archive`, copies the vendored sources locally, and places the
+entire Cargo target directory on local storage.  Only the immutable release
+binary and evidence are returned to the shared filesystem.  This avoids
+parallel-filesystem metadata stalls from Cargo's many small files.
+
 ### Stage 2: build and smoke gate
 
 Submit one scheduled build/smoke job.  It must:

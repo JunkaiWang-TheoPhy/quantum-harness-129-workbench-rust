@@ -44,6 +44,15 @@ the generated source-replacement configuration in
 `CARGO_NET_OFFLINE=true`; a missing toolchain or crate fails the smoke gate
 instead of attempting network access from a compute node.
 
+The scheduled build exports the pinned source with `git archive`, copies the
+vendor tree, and compiles below `$SLURM_TMPDIR`.  This avoids placing Cargo's
+metadata-heavy `target` tree on the shared filesystem.  Only the final release
+binary and evidence are copied back to:
+
+```text
+/work/share/giggleliu/cfys01/quantum-harness-129/artifacts/v0.4.0/
+```
+
 ## Stage source and scripts
 
 From an authenticated machine, create the remote root and clone the fixed

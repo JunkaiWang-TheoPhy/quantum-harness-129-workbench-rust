@@ -40,35 +40,73 @@ qh129_verify_source
 qh129_require_toolchain
 qh129_record_environment "${RUN_DIR}/environment-build.env"
 
+readonly LOCAL_ROOT="${SLURM_TMPDIR:-/tmp}/quantum-harness-129-${SLURM_JOB_ID}"
+readonly LOCAL_SOURCE="${LOCAL_ROOT}/source"
+readonly LOCAL_VENDOR="${LOCAL_ROOT}/vendor"
+readonly LOCAL_CARGO_HOME="${LOCAL_ROOT}/cargo"
+readonly LOCAL_TARGET="${LOCAL_ROOT}/target"
+readonly LOCAL_BINARY="${LOCAL_TARGET}/release/ed_workbench_rs"
+
+mkdir -p \
+    "${LOCAL_SOURCE}" \
+    "${LOCAL_CARGO_HOME}" \
+    "${LOCAL_TARGET}" \
+    "${QH129_ARTIFACT_ROOT}"
+
+qh129_git archive "${QH129_EXPECTED_COMMIT}" | tar -x -C "${LOCAL_SOURCE}"
+cp -a "${QH129_VENDOR_ROOT}" "${LOCAL_VENDOR}"
+
+{
+    printf '[source.crates-io]\n'
+    printf 'replace-with = "vendored-sources"\n\n'
+    printf '[source.vendored-sources]\n'
+    printf 'directory = "%s"\n\n' "${LOCAL_VENDOR}"
+    printf '[net]\n'
+    printf 'offline = true\n'
+} >"${LOCAL_CARGO_HOME}/config.toml"
+
+export CARGO_HOME="${LOCAL_CARGO_HOME}"
+export CARGO_TARGET_DIR="${LOCAL_TARGET}"
+export PATH="${QH129_RUST_HOME}/bin:${PATH}"
+export CARGO_NET_OFFLINE=true
 export CARGO_BUILD_JOBS=16
 export RAYON_NUM_THREADS=56
 
 (
-    cd "${QH129_SOURCE}"
+    cd "${LOCAL_SOURCE}"
     /usr/bin/time -v -o "${RUN_DIR}/cargo-build.time" \
         cargo build --release --locked --offline
     /usr/bin/time -v -o "${RUN_DIR}/cargo-test.time" \
         cargo test --locked --all-targets --offline
 )
 
-test -x "${QH129_BINARY}"
+test -x "${LOCAL_BINARY}"
+if test -e "${QH129_BINARY}"; then
+    test "$(qh129_sha256 "${LOCAL_BINARY}")" = "$(qh129_sha256 "${QH129_BINARY}")"
+else
+    readonly STAGED_BINARY="${QH129_BINARY}.job-${SLURM_JOB_ID}"
+    test ! -e "${STAGED_BINARY}"
+    cp "${LOCAL_BINARY}" "${STAGED_BINARY}"
+    chmod 755 "${STAGED_BINARY}"
+    mv "${STAGED_BINARY}" "${QH129_BINARY}"
+fi
 qh129_record_environment "${RUN_DIR}/environment-binary.env"
 
 "${QH129_BINARY}" verify \
-    "${QH129_SOURCE}/fixtures/h2-equilibrium-sto3g/FCIDUMP" \
-    "${QH129_SOURCE}/fixtures/h2-equilibrium-sto3g/reference.json" \
+    "${LOCAL_SOURCE}/fixtures/h2-equilibrium-sto3g/FCIDUMP" \
+    "${LOCAL_SOURCE}/fixtures/h2-equilibrium-sto3g/reference.json" \
     >"${RUN_DIR}/verify-h2-equilibrium.stdout" \
     2>"${RUN_DIR}/verify-h2-equilibrium.stderr"
 
 "${QH129_BINARY}" verify \
-    "${QH129_SOURCE}/fixtures/h4-sto3g/FCIDUMP" \
-    "${QH129_SOURCE}/fixtures/h4-sto3g/reference.json" \
+    "${LOCAL_SOURCE}/fixtures/h4-sto3g/FCIDUMP" \
+    "${LOCAL_SOURCE}/fixtures/h4-sto3g/reference.json" \
     >"${RUN_DIR}/verify-h4.stdout" \
     2>"${RUN_DIR}/verify-h4.stderr"
 
 "${QH129_BINARY}" verify \
-    "${QH129_SOURCE}/fixtures/h2o-sto3g/FCIDUMP" \
-    "${QH129_SOURCE}/fixtures/h2o-sto3g/reference.json" \
+    "${LOCAL_SOURCE}/fixtures/h2o-sto3g/FCIDUMP" \
+    "${LOCAL_SOURCE}/fixtures/h2o-sto3g/reference.json" \
     >"${RUN_DIR}/verify-h2o-sto3g.stdout" \
     2>"${RUN_DIR}/verify-h2o-sto3g.stderr"
 
@@ -83,7 +121,7 @@ qh129_record_environment "${RUN_DIR}/environment-binary.env"
 grep -F '"full_fci_executed": false' "${RUN_DIR}/h2o-ccpvdz-ae.json"
 
 /usr/bin/time -v -o "${RUN_DIR}/davidson.time" \
-    "${QH129_BINARY}" davidson "${QH129_FCIDUMP}" \
+    "${QH129_BINARY}" davidson "${LOCAL_SOURCE}/fixtures/h2o-631g-fc/FCIDUMP" \
     --residual-tolerance 1e-7 \
     --max-iterations 60 \
     --max-subspace 20 \
