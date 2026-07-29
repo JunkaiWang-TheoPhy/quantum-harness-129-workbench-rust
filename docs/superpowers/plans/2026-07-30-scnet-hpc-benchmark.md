@@ -105,10 +105,10 @@ manifest.  Upload both to the shared toolchain directory and install Rust at
 build must set `CARGO_NET_OFFLINE=true` and use `cargo build --offline` and
 `cargo test --offline`.
 
-Export the pinned source with `git archive`, copy the vendor tree, and set
-`CARGO_TARGET_DIR` below `$SLURM_TMPDIR`.  Copy only the final release binary
-to `artifacts/v0.4.0/` using a job-specific staging name followed by an atomic
-rename.
+Export the pinned source with `git archive`, copy the single compressed vendor
+archive, expand it below `$SLURM_TMPDIR`, and set `CARGO_TARGET_DIR` there.
+Copy only the final release binary to `artifacts/v0.4.0/` using a job-specific
+staging name followed by an atomic rename.
 
 - [ ] **Step 3: Stage orchestration files**
 

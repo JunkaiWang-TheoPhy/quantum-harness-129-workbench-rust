@@ -45,9 +45,11 @@ the generated source-replacement configuration in
 instead of attempting network access from a compute node.
 
 The scheduled build exports the pinned source with `git archive`, copies the
-vendor tree, and compiles below `$SLURM_TMPDIR`.  This avoids placing Cargo's
-metadata-heavy `target` tree on the shared filesystem.  Only the final release
-binary and evidence are copied back to:
+single compressed `vendor.tar.gz` file, expands it on node-local storage, and
+compiles below `$SLURM_TMPDIR`.  This avoids recursive shared-filesystem reads
+of the vendor tree and avoids placing Cargo's metadata-heavy `target` tree on
+the shared filesystem.  Only the final release binary and evidence are copied
+back to:
 
 ```text
 /work/share/giggleliu/cfys01/quantum-harness-129/artifacts/v0.4.0/

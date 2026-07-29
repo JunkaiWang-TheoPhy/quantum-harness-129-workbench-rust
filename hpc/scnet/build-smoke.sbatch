@@ -54,7 +54,9 @@ mkdir -p \
     "${QH129_ARTIFACT_ROOT}"
 
 qh129_git archive "${QH129_EXPECTED_COMMIT}" | tar -x -C "${LOCAL_SOURCE}"
-cp -a "${QH129_VENDOR_ROOT}" "${LOCAL_VENDOR}"
+cp "${QH129_TOOLCHAIN_ROOT}/vendor.tar.gz" "${LOCAL_ROOT}/vendor.tar.gz"
+tar -xzf "${LOCAL_ROOT}/vendor.tar.gz" -C "${LOCAL_ROOT}"
+test -d "${LOCAL_VENDOR}"
 
 {
     printf '[source.crates-io]\n'
