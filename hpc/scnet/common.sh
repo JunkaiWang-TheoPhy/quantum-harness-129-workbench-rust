@@ -47,17 +47,10 @@ qh129_activate_toolchain() {
     export PATH="${QH129_CARGO_HOME}/bin:${PATH}"
 }
 
-qh129_install_toolchain() {
+qh129_require_toolchain() {
     qh129_activate_toolchain
-    mkdir -p "${QH129_RUSTUP_HOME}" "${QH129_CARGO_HOME}"
-    if ! command -v rustup >/dev/null 2>&1; then
-        local installer
-        installer="${SLURM_TMPDIR:-/tmp}/rustup-init-${SLURM_JOB_ID:-manual}"
-        curl --proto '=https' --tlsv1.2 --retry 3 --fail --silent --show-error \
-            https://sh.rustup.rs -o "${installer}"
-        sh "${installer}" -y --profile minimal --default-toolchain 1.89.0
-    fi
-    rustup toolchain install 1.89.0 --profile minimal
+    command -v rustup >/dev/null 2>&1
+    rustup toolchain list | grep -E '^1\.89\.0(-[^ ]+)? '
     rustup default 1.89.0
     rustc --version | grep -F 'rustc 1.89.0 '
     cargo --version

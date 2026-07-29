@@ -35,8 +35,10 @@ converged H2O/cc-pVDZ all-electron FCI energy.
 
 Clone the public repository into a versioned shared-storage directory, detach
 at the exact v0.4.0 commit, verify that `git status` is clean, and install Rust
-1.89 under the same run root.  Record the commit, lockfile hash, compiler
-versions, operating system, and build-node metadata.
+1.89 under the same run root.  SCNet compute nodes have no external DNS, so
+the login node prefetches the Rust toolchain and locked Cargo dependencies;
+scheduled builds run with Cargo `--offline`.  Record the commit, lockfile hash,
+compiler versions, operating system, and build-node metadata.
 
 ### Stage 2: build and smoke gate
 

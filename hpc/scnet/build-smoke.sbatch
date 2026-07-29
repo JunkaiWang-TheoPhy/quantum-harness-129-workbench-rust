@@ -37,7 +37,7 @@ module purge
 module load compiler/gcc/11.4.0
 
 qh129_verify_source
-qh129_install_toolchain
+qh129_require_toolchain
 qh129_record_environment "${RUN_DIR}/environment-build.env"
 
 export CARGO_BUILD_JOBS=16
@@ -46,9 +46,9 @@ export RAYON_NUM_THREADS=56
 (
     cd "${QH129_SOURCE}"
     /usr/bin/time -v -o "${RUN_DIR}/cargo-build.time" \
-        cargo build --release --locked
+        cargo build --release --locked --offline
     /usr/bin/time -v -o "${RUN_DIR}/cargo-test.time" \
-        cargo test --locked --all-targets
+        cargo test --locked --all-targets --offline
 )
 
 test -x "${QH129_BINARY}"

@@ -96,12 +96,19 @@ fixed commit.  Verify `git status --porcelain` is empty.  SCNet provides Git
 1.8.3, so run Git from the source directory or use explicit `--git-dir` and
 `--work-tree`; do not use the newer `git -C` option.
 
-- [ ] **Step 2: Stage orchestration files**
+- [ ] **Step 2: Prefetch the immutable build inputs**
+
+On the login node, install Rust 1.89 into the shared toolchain directory and
+run `cargo fetch --locked` for the pinned manifest.  Compute nodes have no
+external DNS, so the scheduled build must use `cargo build --offline` and
+`cargo test --offline`.
+
+- [ ] **Step 3: Stage orchestration files**
 
 Copy the locally validated files to a versioned remote `hpc/scnet` directory
 and verify their SHA-256 digests after transfer.
 
-- [ ] **Step 3: Submit build/smoke**
+- [ ] **Step 4: Submit build/smoke**
 
 Run `sbatch --parsable
 --export=ALL,QH129_ORCHESTRATION=/absolute/versioned/orchestration
@@ -109,7 +116,7 @@ build-smoke.sbatch` from the versioned orchestration directory and record the
 returned job ID locally.  The explicit path is required because Slurm executes
 a spool copy of the submission script.
 
-- [ ] **Step 4: Verify the gate**
+- [ ] **Step 5: Verify the gate**
 
 Require Slurm state `COMPLETED`, script status `0`, locked tests passing,
 small-system verification passing, bounded cc-pVDZ execution with

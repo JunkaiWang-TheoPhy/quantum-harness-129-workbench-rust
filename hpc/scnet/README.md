@@ -21,6 +21,29 @@ uses 1,008 cores.
 The remote source checkout must be detached at the fixed commit and clean.
 Orchestration scripts are staged outside that checkout.
 
+## Prefetch on the login node
+
+SCNet compute nodes do not provide external DNS.  Install the pinned toolchain
+and fetch locked Cargo dependencies on the login node before submitting a
+build:
+
+```bash
+export RUSTUP_HOME=/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/rustup
+export CARGO_HOME=/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/cargo
+export PATH="$CARGO_HOME/bin:$PATH"
+
+curl --proto '=https' --tlsv1.2 --retry 3 --fail --silent --show-error \
+  https://sh.rustup.rs |
+  sh -s -- -y --profile minimal --default-toolchain 1.89.0
+
+cargo fetch --locked \
+  --manifest-path \
+  /work/share/giggleliu/cfys01/quantum-harness-129/source-v0.4.0/Cargo.toml
+```
+
+The scheduled job uses Cargo `--offline`; a missing toolchain or crate fails
+the smoke gate instead of attempting network access from a compute node.
+
 ## Stage source and scripts
 
 From an authenticated machine, create the remote root and clone the fixed
