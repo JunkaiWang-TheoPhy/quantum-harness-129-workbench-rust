@@ -48,6 +48,12 @@ the immutable release binary and evidence are returned to the shared
 filesystem.  This avoids parallel-filesystem metadata stalls from Cargo's
 many small files.
 
+The `libcint-src` build normally performs a Git clone.  The offline bundle
+therefore includes libcint tag `v6.1.2` with Git metadata and exact commit
+`8d13863ff481cea27efea5e56c9e4d352cdb8f80`.  The job verifies the archive
+hash, expands it locally, loads CMake 3.25, and points `CINT_SRC` at that local
+repository.
+
 ### Stage 2: build and smoke gate
 
 Submit one scheduled build/smoke job.  It must:

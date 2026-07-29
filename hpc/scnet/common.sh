@@ -5,6 +5,7 @@ set -euo pipefail
 readonly QH129_EXPECTED_COMMIT="48f1964a1b3b88090497e1ffce285fde09c98541"
 readonly QH129_EXPECTED_LOCK_SHA256="3e47c3256ebc4bb6503c447f124c2050d8a8c718f567ff1e53efe727d196533b"
 readonly QH129_EXPECTED_FCIDUMP_SHA256="826dd373a8b6047dff8136168431a803b59d9ef029a074da3b8f74f22603db3e"
+readonly QH129_EXPECTED_LIBCINT_ARCHIVE_SHA256="d2514708b2cfd8444e68afa7303d653343634289060afe29d4b21c1558fd2740"
 readonly QH129_REFERENCE_ENERGY="-76.121174204141980"
 
 readonly QH129_REMOTE_ROOT="${QH129_REMOTE_ROOT:-/work/share/giggleliu/cfys01/quantum-harness-129}"
@@ -14,6 +15,7 @@ readonly QH129_TOOLCHAIN_ROOT="${QH129_TOOLCHAIN_ROOT:-${QH129_REMOTE_ROOT}/tool
 readonly QH129_RUST_HOME="${QH129_RUST_HOME:-${QH129_TOOLCHAIN_ROOT}/rust-1.89.0}"
 readonly QH129_CARGO_HOME="${QH129_CARGO_HOME:-${QH129_TOOLCHAIN_ROOT}/cargo}"
 readonly QH129_VENDOR_ROOT="${QH129_VENDOR_ROOT:-${QH129_TOOLCHAIN_ROOT}/vendor}"
+readonly QH129_LIBCINT_ARCHIVE="${QH129_LIBCINT_ARCHIVE:-${QH129_TOOLCHAIN_ROOT}/libcint-v6.1.2.tar.gz}"
 readonly QH129_ARTIFACT_ROOT="${QH129_ARTIFACT_ROOT:-${QH129_REMOTE_ROOT}/artifacts/v0.4.0}"
 readonly QH129_BINARY="${QH129_BINARY:-${QH129_ARTIFACT_ROOT}/ed_workbench_rs}"
 readonly QH129_FCIDUMP="${QH129_FCIDUMP:-${QH129_SOURCE}/fixtures/h2o-631g-fc/FCIDUMP}"
@@ -53,6 +55,8 @@ qh129_require_toolchain() {
     qh129_activate_toolchain
     test -d "${QH129_VENDOR_ROOT}"
     test -f "${QH129_CARGO_HOME}/config.toml"
+    test "$(qh129_sha256 "${QH129_LIBCINT_ARCHIVE}")" = \
+        "${QH129_EXPECTED_LIBCINT_ARCHIVE_SHA256}"
     rustc --version | grep -F 'rustc 1.89.0 '
     cargo --version
 }
@@ -76,6 +80,7 @@ qh129_record_environment() {
         printf 'source_commit=%s\n' "${QH129_EXPECTED_COMMIT}"
         printf 'cargo_lock_sha256=%s\n' "${QH129_EXPECTED_LOCK_SHA256}"
         printf 'fcidump_sha256=%s\n' "${QH129_EXPECTED_FCIDUMP_SHA256}"
+        printf 'libcint_archive_sha256=%s\n' "${QH129_EXPECTED_LIBCINT_ARCHIVE_SHA256}"
         printf 'binary_sha256=%s\n' "${binary_sha256}"
         printf 'kernel=%s\n' "$(uname -srmo)"
         printf 'cpu_model=%s\n' "$(awk -F: '/model name/{gsub(/^ +/,"",$2); print $2; exit}' /proc/cpuinfo)"

@@ -44,6 +44,18 @@ the generated source-replacement configuration in
 `CARGO_NET_OFFLINE=true`; a missing toolchain or crate fails the smoke gate
 instead of attempting network access from a compute node.
 
+The `libcint-src` crate normally clones libcint during its CMake build.  Clone
+the exact `v6.1.2` tag (`8d13863ff481cea27efea5e56c9e4d352cdb8f80`), retain
+its Git metadata, archive it as `libcint-v6.1.2.tar.gz`, and upload it to the
+toolchain directory.  The recorded archive SHA-256 is:
+
+```text
+d2514708b2cfd8444e68afa7303d653343634289060afe29d4b21c1558fd2740
+```
+
+The build job loads CMake 3.25, expands that archive locally, verifies the Git
+commit, and sets `CINT_SRC` to the local repository.
+
 The scheduled build exports the pinned source with `git archive`, copies the
 single compressed `vendor.tar.gz` file, expands it on node-local storage, and
 compiles below `$SLURM_TMPDIR`.  This avoids recursive shared-filesystem reads
