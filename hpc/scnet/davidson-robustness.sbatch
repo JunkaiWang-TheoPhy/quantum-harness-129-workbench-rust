@@ -15,8 +15,8 @@ set -euo pipefail
 unset LC_ALL
 export LANG=C
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common.sh"
+: "${QH129_ORCHESTRATION:?submit with --export=ALL,QH129_ORCHESTRATION=/absolute/path}"
+source "${QH129_ORCHESTRATION}/common.sh"
 
 readonly TOLERANCES=(1e-6 1e-7 1e-8)
 readonly SUBSPACES=(12 16 20 24 32 48)
@@ -81,4 +81,3 @@ qh129_record_environment "${RUN_DIR}/environment.env"
     --strict-parallel-memory \
     >"${RUN_DIR}/davidson.stdout" \
     2>"${RUN_DIR}/davidson.stderr"
-

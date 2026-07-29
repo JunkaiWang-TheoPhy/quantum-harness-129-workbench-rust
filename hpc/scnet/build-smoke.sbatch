@@ -14,8 +14,8 @@ set -euo pipefail
 unset LC_ALL
 export LANG=C
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common.sh"
+: "${QH129_ORCHESTRATION:?submit with --export=ALL,QH129_ORCHESTRATION=/absolute/path}"
+source "${QH129_ORCHESTRATION}/common.sh"
 
 readonly RUN_DIR="${QH129_RUN_ROOT}/${SLURM_JOB_ID}/build-smoke"
 mkdir -p "${RUN_DIR}"
@@ -107,4 +107,3 @@ grep -F -- '-76.12117' "${RUN_DIR}/davidson.stdout"
         verify-h2o-sto3g.stdout \
         >SHA256SUMS
 )
-

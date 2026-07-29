@@ -49,6 +49,11 @@ Submit one scheduled build/smoke job.  It must:
 5. run one H2O/6-31G frozen-core Davidson calculation;
 6. record binary/input/output hashes and exit statuses.
 
+Because Slurm copies the submission script into its spool directory, the
+versioned orchestration directory is passed explicitly as the absolute
+`QH129_ORCHESTRATION` job environment variable.  Jobs never infer it from
+`BASH_SOURCE`.
+
 The production array is not submitted until this stage succeeds.
 
 ### Stage 3: 1,008-core robustness matrix
@@ -105,4 +110,3 @@ new result directory; existing results are never deleted or overwritten.
 6. Every completed task has a manifest, status, logs, time report, and hashes.
 7. The final aggregate distinguishes convergence failures from infrastructure
    failures and does not claim MPI scaling.
-

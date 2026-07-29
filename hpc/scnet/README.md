@@ -47,7 +47,9 @@ Submit build/smoke first:
 
 ```bash
 ssh SCNET 'cd /work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1 &&
-  sbatch --parsable build-smoke.sbatch'
+  sbatch --parsable \
+    --export=ALL,QH129_ORCHESTRATION=$PWD \
+    build-smoke.sbatch'
 ```
 
 Require a zero exit status and inspect:
@@ -60,7 +62,9 @@ Only after that gate passes, submit production:
 
 ```bash
 ssh SCNET 'cd /work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1 &&
-  sbatch --parsable davidson-robustness.sbatch'
+  sbatch --parsable \
+    --export=ALL,QH129_ORCHESTRATION=$PWD \
+    davidson-robustness.sbatch'
 ```
 
 The array header is `0-17%18`; each task requests 56 CPUs.  Slurm can therefore

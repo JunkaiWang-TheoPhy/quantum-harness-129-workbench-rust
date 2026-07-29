@@ -103,8 +103,11 @@ and verify their SHA-256 digests after transfer.
 
 - [ ] **Step 3: Submit build/smoke**
 
-Run `sbatch --parsable hpc/scnet/build-smoke.sbatch` from the pinned source
-directory and record the returned job ID locally.
+Run `sbatch --parsable
+--export=ALL,QH129_ORCHESTRATION=/absolute/versioned/orchestration
+build-smoke.sbatch` from the versioned orchestration directory and record the
+returned job ID locally.  The explicit path is required because Slurm executes
+a spool copy of the submission script.
 
 - [ ] **Step 4: Verify the gate**
 
@@ -130,7 +133,9 @@ small-system verification passing, bounded cc-pVDZ execution with
 Run:
 
 ```bash
-sbatch --parsable hpc/scnet/davidson-robustness.sbatch
+sbatch --parsable \
+  --export=ALL,QH129_ORCHESTRATION=/absolute/versioned/orchestration \
+  davidson-robustness.sbatch
 ```
 
 Require the script header to specify `0-17%18` and 56 CPUs per task.
