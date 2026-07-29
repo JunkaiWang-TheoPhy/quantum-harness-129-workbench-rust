@@ -5,11 +5,17 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use ed_workbench_rs::ao2mo::transform_to_mo;
-use ed_workbench_rs::coupled_cluster::{CcConfig, solve_cc, solve_cc_series};
-use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair, lowest_eigenpairs};
+use ed_workbench_rs::benchmark::{
+    BoundedBenchmarkConfig, BoundedBenchmarkResult, run_h2o_cc_pvdz_benchmark,
+};
+use ed_workbench_rs::coupled_cluster::{CcConfig, CcTermination, solve_cc, solve_cc_series};
+use ed_workbench_rs::davidson::{
+    DavidsonConfig, DavidsonRunConfig, DavidsonWorkspaceConfig, lowest_eigenpair,
+    lowest_eigenpair_with_run_config, lowest_eigenpairs,
+};
 use ed_workbench_rs::dense_fci::ground_state_energy;
 use ed_workbench_rs::determinant::DeterminantBasis;
-use ed_workbench_rs::direct_fci::DirectFciOperator;
+use ed_workbench_rs::direct_fci::{DirectFciOperator, ExecutionPolicy};
 use ed_workbench_rs::fcidump::Fcidump;
 use ed_workbench_rs::libcint_frontend::{ENERGY_UNIT, compute_ao_integrals};
 use ed_workbench_rs::mbpt::solve_mbpt;
@@ -22,6 +28,7 @@ use ed_workbench_rs::reference::{Reference, sha256_hex};
 use ed_workbench_rs::rhf::{RhfConfig, solve_rhf};
 use ed_workbench_rs::truncated_ci::{solve_ci, solve_ci_series};
 use ed_workbench_rs::unitary_cc::UnitaryCcModel;
+use serde::Serialize;
 
 #[derive(Debug, Parser)]
 #[command(name = "ed-workbench-rs")]
@@ -47,6 +54,30 @@ enum Command {
         max_iterations: usize,
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
+        #[arg(long)]
+        workspace: Option<PathBuf>,
+        #[arg(long, requires = "workspace")]
+        resume: bool,
+        #[arg(long, default_value_t = 1, requires = "workspace")]
+        checkpoint_every: usize,
+        #[arg(
+            long,
+            default_value_t = 2.0,
+            help = "conservative Davidson-vector budget in GiB; not an operating-system hard limit"
+        )]
+        memory_budget_gib: f64,
+        #[arg(long, requires = "workspace")]
+        operator_fingerprint: Option<String>,
+        #[arg(
+            long,
+            default_value_t = 1,
+            help = "fixed ordered source blocks; values greater than one enable parallel sigma"
+        )]
+        parallel_blocks: usize,
+        #[arg(long, default_value_t = 2.0)]
+        parallel_memory_budget_gib: f64,
+        #[arg(long)]
+        strict_parallel_memory: bool,
     },
     SigmaBenchmark {
         fcidump: PathBuf,
@@ -83,6 +114,8 @@ enum Command {
         residual_tolerance: f64,
         #[arg(long, default_value_t = 100)]
         max_iterations: usize,
+        #[arg(long)]
+        json_output: Option<PathBuf>,
     },
     Ci {
         fcidump: PathBuf,
@@ -135,6 +168,31 @@ enum Command {
         max_iterations: usize,
         #[arg(long, default_value_t = 24)]
         max_subspace: usize,
+        #[arg(
+            long,
+            default_value_t = 1,
+            help = "fixed ordered source blocks; values greater than one enable parallel sigma"
+        )]
+        parallel_blocks: usize,
+        #[arg(long, default_value_t = 2.0)]
+        parallel_memory_budget_gib: f64,
+        #[arg(long)]
+        strict_parallel_memory: bool,
+    },
+    Benchmark {
+        #[arg(value_enum)]
+        system: BenchmarkSystem,
+        #[arg(long, default_value_t = 16)]
+        sources: usize,
+        #[arg(
+            long = "memory-budget-gib",
+            visible_alias = "max-memory-gib",
+            default_value_t = 2.0,
+            help = "not an operating-system hard memory limit; rejects conservative estimates above this GiB budget"
+        )]
+        memory_budget_gib: f64,
+        #[arg(long)]
+        json_output: Option<PathBuf>,
     },
     Verify {
         fcidump: PathBuf,
@@ -148,6 +206,38 @@ enum Command {
 enum DirectSystem {
     H2Sto3g,
     H2oSto3g,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum BenchmarkSystem {
+    H2oCcPvdz,
+}
+
+#[derive(Debug, Serialize)]
+struct CcSeriesJson {
+    schema_version: u32,
+    artifact_kind: &'static str,
+    system: String,
+    energy_unit: &'static str,
+    fci_reference_energy: f64,
+    config: CcConfig,
+    results: Vec<CcRankJson>,
+    published_verification: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+struct CcRankJson {
+    rank: usize,
+    energy: f64,
+    method_minus_fci: f64,
+    iterations: usize,
+    residual_norm: f64,
+    elapsed_seconds: f64,
+    converged: bool,
+    termination: CcTermination,
+    published_difference: Option<f64>,
+    published_error: Option<f64>,
+    published_match: Option<bool>,
 }
 
 impl DirectSystem {
@@ -210,11 +300,24 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             residual_tolerance,
             max_iterations,
             max_subspace,
+            workspace,
+            resume,
+            checkpoint_every,
+            memory_budget_gib,
+            operator_fingerprint,
+            parallel_blocks,
+            parallel_memory_budget_gib,
+            strict_parallel_memory,
         } => {
             let bytes = fs::read(&fcidump)?;
             let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
             let problem = ElectronicProblem::from_fcidump(&dump)?;
-            let operator = DirectFciOperator::new(problem)?;
+            let operator =
+                DirectFciOperator::new(problem)?.with_execution_policy(execution_policy(
+                    parallel_blocks,
+                    parallel_memory_budget_gib,
+                    strict_parallel_memory,
+                )?)?;
             let mut initial = vec![0.0; operator.dimension()];
             let reference_index = operator
                 .diagonal()
@@ -224,19 +327,50 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .map(|(index, _)| index)
                 .ok_or("empty determinant basis")?;
             initial[reference_index] = 1.0;
-            let result = lowest_eigenpair(
-                &operator,
-                &initial,
-                &DavidsonConfig {
-                    residual_tolerance,
-                    energy_tolerance: residual_tolerance * 0.01,
-                    max_iterations,
-                    max_subspace,
-                },
-            )?;
+            let algorithm = DavidsonConfig {
+                residual_tolerance,
+                energy_tolerance: residual_tolerance * 0.01,
+                max_iterations,
+                max_subspace,
+            };
+            let estimated_bytes =
+                davidson_resident_bytes(operator.dimension(), max_subspace, workspace.is_some())?;
+            let budget_bytes = gib_to_bytes(memory_budget_gib)?;
+            if estimated_bytes > budget_bytes {
+                return Err(format!(
+                    "conservative Davidson vector estimate {:.6} GiB exceeds budget {:.6} GiB",
+                    estimated_bytes as f64 / GIB,
+                    budget_bytes as f64 / GIB
+                )
+                .into());
+            }
+            let run_config = DavidsonRunConfig {
+                algorithm,
+                workspace: workspace.map(|path| DavidsonWorkspaceConfig {
+                    path,
+                    resume,
+                    checkpoint_every,
+                    operator_fingerprint: operator_fingerprint
+                        .unwrap_or_else(|| sha256_hex(&bytes)),
+                }),
+            };
+            let result = lowest_eigenpair_with_run_config(&operator, &initial, &run_config)?;
             println!("energy: {:.15}", result.energy);
             println!("residual norm: {:.3e}", result.residual_norm);
             println!("iterations: {}", result.iterations);
+            println!(
+                "storage: {}",
+                if run_config.workspace.is_some() {
+                    "disk workspace"
+                } else {
+                    "memory"
+                }
+            );
+            println!(
+                "conservative Davidson vectors: {:.6} GiB",
+                estimated_bytes as f64 / GIB
+            );
+            print_execution_preflight(&operator);
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err("Davidson did not converge".into());
@@ -349,6 +483,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             max_rank,
             residual_tolerance,
             max_iterations,
+            json_output,
         } => {
             let bytes = fs::read(&fcidump)?;
             let dump = Fcidump::parse(std::str::from_utf8(&bytes)?)?;
@@ -361,16 +496,17 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             if let Some(table) = &published {
                 validate_hirata_context(table, &reference, &operator)?;
             }
+            let cc_config = CcConfig {
+                residual_tolerance,
+                energy_tolerance: residual_tolerance * 0.01,
+                max_iterations,
+                ..Default::default()
+            };
             let series = solve_cc_series(
                 &operator,
                 max_rank,
                 &reference.active_orbital_energies,
-                &CcConfig {
-                    residual_tolerance,
-                    energy_tolerance: residual_tolerance * 0.01,
-                    max_iterations,
-                    ..Default::default()
-                },
+                &cc_config,
             )?;
 
             println!("system: {}", reference.system);
@@ -379,6 +515,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "rank\tenergy_hartree\tmethod_minus_fci_hartree\titerations\tresidual\telapsed_seconds\tconverged\tpublished_difference\tpublished_error\tpublished_match"
             );
             let mut published_matches = true;
+            let mut json_results = Vec::with_capacity(series.len());
             for entry in &series {
                 let difference = entry.result.energy - reference.fci_energy;
                 let iterations = entry.result.iterations.len();
@@ -390,6 +527,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     let matches =
                         rounded_published_match(difference, expected, table.printed_decimals);
                     published_matches &= matches;
+                    json_results.push(CcRankJson {
+                        rank: entry.rank,
+                        energy: entry.result.energy,
+                        method_minus_fci: difference,
+                        iterations,
+                        residual_norm: entry.result.residual_norm,
+                        elapsed_seconds: entry.elapsed.as_secs_f64(),
+                        converged: entry.result.converged,
+                        termination: entry.result.termination,
+                        published_difference: Some(expected),
+                        published_error: Some(error),
+                        published_match: Some(matches),
+                    });
                     println!(
                         "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t{:.6}\t{:.3e}\t{}",
                         entry.rank,
@@ -404,6 +554,19 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         matches
                     );
                 } else {
+                    json_results.push(CcRankJson {
+                        rank: entry.rank,
+                        energy: entry.result.energy,
+                        method_minus_fci: difference,
+                        iterations,
+                        residual_norm: entry.result.residual_norm,
+                        elapsed_seconds: entry.elapsed.as_secs_f64(),
+                        converged: entry.result.converged,
+                        termination: entry.result.termination,
+                        published_difference: None,
+                        published_error: None,
+                        published_match: None,
+                    });
                     println!(
                         "{}\t{:.15}\t{:.15}\t{}\t{:.3e}\t{:.6}\t{}\t-\t-\t-",
                         entry.rank,
@@ -428,6 +591,27 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         "FAIL"
                     }
                 );
+            }
+            if let Some(path) = json_output {
+                if let Some(parent) = path.parent()
+                    && !parent.as_os_str().is_empty()
+                {
+                    fs::create_dir_all(parent)?;
+                }
+                let summary = CcSeriesJson {
+                    schema_version: 1,
+                    artifact_kind: "cc-series",
+                    system: reference.system.clone(),
+                    energy_unit: "hartree",
+                    fci_reference_energy: reference.fci_energy,
+                    config: cc_config,
+                    results: json_results,
+                    published_verification: published
+                        .as_ref()
+                        .map(|_| published_matches && converged),
+                };
+                fs::write(&path, serde_json::to_vec_pretty(&summary)?)?;
+                println!("JSON output: {}", path.display());
             }
             if !converged {
                 return Err(format!("CC series stopped before converged CC({max_rank})").into());
@@ -676,6 +860,9 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             residual_tolerance,
             max_iterations,
             max_subspace,
+            parallel_blocks,
+            parallel_memory_budget_gib,
+            strict_parallel_memory,
         } => {
             let integral_started = Instant::now();
             let integrals = compute_ao_integrals(&system.molecule())?;
@@ -689,7 +876,12 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let transform_started = Instant::now();
             let problem = transform_to_mo(&integrals, &rhf)?;
             let transform_time = transform_started.elapsed();
-            let operator = DirectFciOperator::new(problem)?;
+            let operator =
+                DirectFciOperator::new(problem)?.with_execution_policy(execution_policy(
+                    parallel_blocks,
+                    parallel_memory_budget_gib,
+                    strict_parallel_memory,
+                )?)?;
             let mut initial = vec![0.0; operator.dimension()];
             let reference_index = operator
                 .diagonal()
@@ -721,6 +913,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("FCI total energy: {:.15}", result.energy);
             println!("FCI residual norm: {:.3e}", result.residual_norm);
             println!("FCI iterations: {}", result.iterations);
+            print_execution_preflight(&operator);
             println!("integral time: {:.3?}", integral_time);
             println!("RHF time: {:.3?}", rhf_time);
             println!("AO-to-MO time: {:.3?}", transform_time);
@@ -728,6 +921,29 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("converged: {}", result.converged);
             if !result.converged {
                 return Err("direct-integrals FCI did not converge".into());
+            }
+        }
+        Command::Benchmark {
+            system,
+            sources,
+            memory_budget_gib,
+            json_output,
+        } => {
+            let result = match system {
+                BenchmarkSystem::H2oCcPvdz => run_h2o_cc_pvdz_benchmark(BoundedBenchmarkConfig {
+                    sources,
+                    memory_budget_gib,
+                })?,
+            };
+            print_benchmark_result(&result);
+            if let Some(path) = json_output {
+                if let Some(parent) = path.parent()
+                    && !parent.as_os_str().is_empty()
+                {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::write(&path, serde_json::to_vec_pretty(&result)?)?;
+                println!("JSON output: {}", path.display());
             }
         }
         Command::Verify {
@@ -763,6 +979,139 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+fn print_benchmark_result(result: &BoundedBenchmarkResult) {
+    println!("system: {}", result.system);
+    println!("geometry: {}", result.geometry);
+    println!("basis: {}", result.basis);
+    println!("basis provenance: {}", result.basis_provenance);
+    println!("coordinate unit: {}", result.coordinate_unit);
+    println!("energy unit: {}", result.energy_unit);
+    println!("all electrons: {}", result.all_electron);
+    println!("point-group symmetry: {}", result.point_group_symmetry);
+    println!("orbitals: {}", result.norb);
+    println!("electrons: {}", result.nelec);
+    println!("Nalpha/Nbeta: {}/{}", result.nalpha, result.nbeta);
+    println!("alpha strings: {}", result.space.alpha_strings);
+    println!("beta strings: {}", result.space.beta_strings);
+    println!("determinants: {}", result.space.determinants);
+    println!(
+        "one dense CI vector: {:.6} GiB",
+        result.space.vector_bytes as f64 / GIB
+    );
+    println!(
+        "current Davidson minimum: {:.6} GiB",
+        result.space.minimum_current_davidson_bytes as f64 / GIB
+    );
+    println!(
+        "24-vector-pair Davidson subspace: {:.6} GiB",
+        result.space.subspace_24_bytes as f64 / GIB
+    );
+    println!(
+        "bounded benchmark estimate: {:.6} GiB",
+        result.bounded_memory.conservative_peak_bytes as f64 / GIB
+    );
+    println!(
+        "memory budget: {:.6} GiB",
+        result.memory_budget_bytes as f64 / GIB
+    );
+    println!("RHF total energy: {:.15}", result.rhf_total_energy);
+    println!("PySCF RHF reference: {:.15}", result.rhf_reference_energy);
+    println!("RHF absolute error: {:.3e} Eh", result.rhf_absolute_error);
+    println!("RHF iterations: {}", result.rhf_iterations);
+    println!("RHF density RMS: {:.3e}", result.rhf_density_rms);
+    println!(
+        "integral time: {:.6} s",
+        result.timings.ao_integrals_seconds
+    );
+    println!("RHF time: {:.6} s", result.timings.rhf_seconds);
+    println!("AO-to-MO time: {:.6} s", result.timings.ao_to_mo_seconds);
+    println!(
+        "string/link time: {:.6} s",
+        result.timings.link_tables_seconds
+    );
+    println!(
+        "sparse-column time: {:.6} s",
+        result.timings.sparse_columns_seconds
+    );
+    println!("sparse columns: {}", result.sparse_kernel.sources);
+    println!(
+        "raw Hamiltonian contributions: {}",
+        result.sparse_kernel.raw_contributions
+    );
+    println!(
+        "Hamiltonian contributions/s: {:.3e}",
+        result.sparse_kernel.contributions_per_second
+    );
+    println!(
+        "sparse-column checksum: {:.15}",
+        result.sparse_kernel.checksum
+    );
+    println!("Rayon threads: {}", result.rayon_threads);
+    println!("full FCI executed: {}", result.full_fci_executed);
+}
+
+const GIB: f64 = (1024_u64.pow(3)) as f64;
+
+fn gib_to_bytes(gib: f64) -> Result<u64, Box<dyn std::error::Error>> {
+    if !gib.is_finite() || gib <= 0.0 {
+        return Err("memory budget must be finite and positive".into());
+    }
+    let bytes = gib * GIB;
+    if bytes > u64::MAX as f64 {
+        return Err("memory budget exceeds u64 byte range".into());
+    }
+    Ok(bytes.ceil() as u64)
+}
+
+fn davidson_resident_bytes(
+    dimension: usize,
+    max_subspace: usize,
+    disk_workspace: bool,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let resident_vectors = if disk_workspace {
+        7
+    } else {
+        max_subspace
+            .checked_mul(2)
+            .and_then(|value| value.checked_add(6))
+            .ok_or("Davidson resident-vector count overflow")?
+    };
+    let bytes = dimension
+        .checked_mul(resident_vectors)
+        .and_then(|value| value.checked_mul(size_of::<f64>()))
+        .ok_or("Davidson resident-byte estimate overflow")?;
+    Ok(u64::try_from(bytes)?)
+}
+
+fn execution_policy(
+    blocks: usize,
+    memory_budget_gib: f64,
+    strict_memory: bool,
+) -> Result<ExecutionPolicy, Box<dyn std::error::Error>> {
+    if blocks <= 1 {
+        return Ok(ExecutionPolicy::Serial);
+    }
+    Ok(ExecutionPolicy::Parallel {
+        blocks,
+        memory_budget_bytes: gib_to_bytes(memory_budget_gib)?,
+        allow_serial_fallback: !strict_memory,
+    })
+}
+
+fn print_execution_preflight(operator: &DirectFciOperator) {
+    let report = operator.execution_preflight();
+    println!("requested sigma mode: {:?}", report.requested_mode);
+    println!("effective sigma mode: {:?}", report.effective_mode);
+    println!("sigma source blocks: {}", report.effective_blocks);
+    println!(
+        "parallel sigma workspace: {:.6} GiB",
+        report.workspace_bytes as f64 / GIB
+    );
+    if let Some(reason) = report.fallback_reason {
+        println!("parallel sigma fallback: {reason}");
+    }
 }
 
 fn validate_hirata_context(

@@ -91,3 +91,13 @@ MP2, CCSD, integrals, and checksums, but deliberately does not start PySCF FCI.
 The size guard is explicit in `generation_metadata.json`; the literature FCI
 anchor is stored separately and is not represented as a high-precision PySCF
 result.
+
+The review benchmark reference is deliberately RHF-only:
+
+```bash
+.venv/bin/python scripts/oracle/generate.py h2o-ccpvdz-ae
+```
+
+It uses all 10 electrons, 24 cc-pVDZ spatial orbitals, `symmetry=False`, and
+records the fixed-`Nalpha=Nbeta=5` determinant dimension. It does not create
+FCIDUMP, run FCI, CCSD, or MP2, or allocate a full CI vector.

@@ -2,8 +2,11 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use ed_workbench_rs::davidson::{DavidsonConfig, lowest_eigenpair};
-use ed_workbench_rs::direct_fci::DirectFciOperator;
+use ed_workbench_rs::davidson::{
+    DavidsonConfig, DavidsonRunConfig, DavidsonWorkspaceConfig, lowest_eigenpair,
+    lowest_eigenpair_with_run_config,
+};
+use ed_workbench_rs::direct_fci::{DirectFciOperator, ExecutionPolicy};
 use ed_workbench_rs::fcidump::Fcidump;
 use ed_workbench_rs::operator::LinearOperator;
 use ed_workbench_rs::problem::ElectronicProblem;
@@ -82,4 +85,61 @@ fn sigma_benchmark_cli_reports_timing_and_checksum() {
     assert!(stdout.contains("determinants: 36"));
     assert!(stdout.contains("sigma apply seconds:"));
     assert!(stdout.contains("weighted checksum:"));
+}
+
+#[test]
+fn open_shell_doublet_matches_across_memory_disk_and_parallel_paths() {
+    let problem = ElectronicProblem::new(
+        3,
+        1,
+        1,
+        0.1,
+        vec![-1.0, 0.0, 0.0, 0.0, -0.5, 0.0, 0.0, 0.0, 0.2],
+        vec![0.0; 3_usize.pow(4)],
+    )
+    .unwrap();
+    let config = DavidsonConfig {
+        residual_tolerance: 1e-12,
+        energy_tolerance: 1e-14,
+        max_iterations: 20,
+        max_subspace: 3,
+    };
+    let initial = [1.0, 0.1, 0.1];
+
+    let serial = DirectFciOperator::new(problem.clone()).unwrap();
+    let memory = lowest_eigenpair(&serial, &initial, &config).unwrap();
+    assert!(memory.converged);
+    assert!((memory.energy - (-0.9)).abs() < 1e-12);
+
+    let parallel = DirectFciOperator::new(problem)
+        .unwrap()
+        .with_execution_policy(ExecutionPolicy::Parallel {
+            blocks: 2,
+            memory_budget_bytes: 1 << 20,
+            allow_serial_fallback: false,
+        })
+        .unwrap();
+    let workspace =
+        std::env::temp_dir().join(format!("ed-workbench-open-shell-{}", std::process::id()));
+    if workspace.exists() {
+        fs::remove_dir_all(&workspace).unwrap();
+    }
+    let disk = lowest_eigenpair_with_run_config(
+        &parallel,
+        &initial,
+        &DavidsonRunConfig {
+            algorithm: config,
+            workspace: Some(DavidsonWorkspaceConfig {
+                path: workspace.clone(),
+                resume: false,
+                checkpoint_every: 1,
+                operator_fingerprint: "open-shell-doublet-v1".to_string(),
+            }),
+        },
+    )
+    .unwrap();
+    fs::remove_dir_all(workspace).unwrap();
+    assert!(disk.converged);
+    assert!((disk.energy - memory.energy).abs() < 1e-13);
+    assert!((disk.residual_norm - memory.residual_norm).abs() < 1e-12);
 }

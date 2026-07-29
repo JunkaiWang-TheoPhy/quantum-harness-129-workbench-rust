@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::amplitudes::{Amplitudes, orbital_denominators};
@@ -10,7 +11,7 @@ use crate::direct_fci::DirectFciOperator;
 use crate::excitation::{ExcitationError, ExcitationSpace, hartree_fock_reference};
 use crate::operator::{LinearOperator, OperatorError};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CcConfig {
     pub residual_tolerance: f64,
     pub energy_tolerance: f64,
@@ -31,7 +32,7 @@ impl Default for CcConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CcIteration {
     pub iteration: usize,
     pub energy: f64,
@@ -46,6 +47,14 @@ pub struct CcResult {
     pub residual_norm: f64,
     pub iterations: Vec<CcIteration>,
     pub converged: bool,
+    pub termination: CcTermination,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CcTermination {
+    Converged,
+    MaximumIterations,
 }
 
 #[derive(Debug, Clone)]
@@ -65,6 +74,16 @@ pub enum CcError {
     WarmStartLength { actual: usize, expected: usize },
     #[error("orbital denominator {index} is zero or non-finite")]
     InvalidDenominator { index: usize },
+    #[error("invalid CC configuration field {field}: {message}")]
+    InvalidConfig {
+        field: &'static str,
+        message: &'static str,
+    },
+    #[error("CC iteration {iteration} produced non-finite {quantity}")]
+    NonFiniteState {
+        iteration: usize,
+        quantity: &'static str,
+    },
     #[error(transparent)]
     Determinant(#[from] DeterminantError),
     #[error(transparent)]
@@ -83,6 +102,7 @@ pub fn solve_cc(
     orbital_energies: &[f64],
     config: &CcConfig,
 ) -> Result<CcResult, CcError> {
+    validate_config(config)?;
     let problem = operator.problem();
     let basis = DeterminantBasis::from_problem(problem)?;
     validate_rank(rank, &basis)?;
@@ -97,6 +117,7 @@ pub fn solve_cc_series(
     orbital_energies: &[f64],
     config: &CcConfig,
 ) -> Result<Vec<CcSeriesEntry>, CcError> {
+    validate_config(config)?;
     let problem = operator.problem();
     let basis = DeterminantBasis::from_problem(problem)?;
     validate_rank(max_rank, &basis)?;
@@ -149,6 +170,34 @@ fn validate_rank(rank: usize, basis: &DeterminantBasis) -> Result<(), CcError> {
     Ok(())
 }
 
+fn validate_config(config: &CcConfig) -> Result<(), CcError> {
+    for (field, value) in [
+        ("residual_tolerance", config.residual_tolerance),
+        ("energy_tolerance", config.energy_tolerance),
+        ("exponential_threshold", config.exponential_threshold),
+    ] {
+        if !value.is_finite() || value <= 0.0 {
+            return Err(CcError::InvalidConfig {
+                field,
+                message: "must be finite and positive",
+            });
+        }
+    }
+    if config.max_iterations == 0 {
+        return Err(CcError::InvalidConfig {
+            field: "max_iterations",
+            message: "must be at least 1",
+        });
+    }
+    if config.diis_history == 0 {
+        return Err(CcError::InvalidConfig {
+            field: "diis_history",
+            message: "must be at least 1",
+        });
+    }
+    Ok(())
+}
+
 fn solve_cc_in_space(
     operator: &DirectFciOperator,
     basis: &DeterminantBasis,
@@ -189,6 +238,8 @@ fn solve_cc_in_space(
 
     for iteration in 1..=config.max_iterations {
         let (energy, residual) = energy_and_residual(operator, space, &expansion, &amplitudes)?;
+        ensure_finite(iteration, "energy", std::iter::once(energy))?;
+        ensure_finite(iteration, "residual", residual.iter().copied())?;
         let residual_norm = residual
             .iter()
             .map(|value| value * value)
@@ -208,6 +259,7 @@ fn solve_cc_in_space(
                 residual_norm,
                 iterations,
                 converged: true,
+                termination: CcTermination::Converged,
             });
         }
         for ((amplitude, residual_value), denominator) in amplitudes
@@ -218,14 +270,26 @@ fn solve_cc_in_space(
         {
             *amplitude += residual_value / denominator;
         }
+        ensure_finite(iteration, "amplitudes", amplitudes.values.iter().copied())?;
         history.push(&amplitudes.values, &residual)?;
         if let Some(extrapolated) = history.extrapolate() {
+            ensure_finite(iteration, "DIIS amplitudes", extrapolated.iter().copied())?;
             amplitudes.values = extrapolated;
         }
         previous_energy = energy;
     }
 
     let (energy, residual) = energy_and_residual(operator, space, &expansion, &amplitudes)?;
+    ensure_finite(
+        config.max_iterations,
+        "final energy",
+        std::iter::once(energy),
+    )?;
+    ensure_finite(
+        config.max_iterations,
+        "final residual",
+        residual.iter().copied(),
+    )?;
     let residual_norm = residual
         .iter()
         .map(|value| value * value)
@@ -237,7 +301,22 @@ fn solve_cc_in_space(
         residual_norm,
         iterations,
         converged: false,
+        termination: CcTermination::MaximumIterations,
     })
+}
+
+fn ensure_finite(
+    iteration: usize,
+    quantity: &'static str,
+    values: impl Iterator<Item = f64>,
+) -> Result<(), CcError> {
+    if values.into_iter().any(|value| !value.is_finite()) {
+        return Err(CcError::NonFiniteState {
+            iteration,
+            quantity,
+        });
+    }
+    Ok(())
 }
 
 fn energy_and_residual(

@@ -2,6 +2,9 @@ use std::fmt;
 
 use thiserror::Error;
 
+const H2O_GEOMETRY_ANGSTROM: &str =
+    "O 0 0 0; H 0.967 0 0; H -0.2923916843556798 0.9217353757557798 0";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoordinateUnit {
     Angstrom,
@@ -81,9 +84,15 @@ impl Molecule {
     pub fn h2o_sto3g() -> Self {
         // Cartesian Angstrom coordinates: R(O-H) = 0.967 Angstrom,
         // angle(H-O-H) = 107.6 degree.
+        Self::new(H2O_GEOMETRY_ANGSTROM, "STO-3G", 0, CoordinateUnit::Angstrom)
+            .expect("built-in molecule is valid")
+    }
+
+    pub fn h2o_cc_pvdz() -> Self {
+        // Same challenge geometry, all-electron cc-pVDZ benchmark input.
         Self::new(
-            "O 0 0 0; H 0.967 0 0; H -0.2923916843556798 0.9217353757557798 0",
-            "STO-3G",
+            H2O_GEOMETRY_ANGSTROM,
+            "cc-pVDZ",
             0,
             CoordinateUnit::Angstrom,
         )
@@ -119,6 +128,15 @@ mod tests {
             assert_eq!(molecule.coordinate_unit, CoordinateUnit::Angstrom);
             assert!(!molecule.atom.is_empty());
         }
+    }
+
+    #[test]
+    fn h2o_cc_pvdz_is_all_electron_benchmark_geometry() {
+        let molecule = Molecule::h2o_cc_pvdz();
+        assert_eq!(molecule.charge, 0);
+        assert_eq!(molecule.basis, "cc-pVDZ");
+        assert_eq!(molecule.coordinate_unit, CoordinateUnit::Angstrom);
+        assert_eq!(molecule.atom, Molecule::h2o_sto3g().atom);
     }
 
     #[test]

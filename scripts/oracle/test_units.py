@@ -65,7 +65,7 @@ class GeometryUnitTests(unittest.TestCase):
         )
 
     def test_water_geometry_is_0_967_angstrom_and_107_6_degrees(self) -> None:
-        for slug in ("h2o-sto3g", "h2o-631g-fc"):
+        for slug in ("h2o-sto3g", "h2o-631g-fc", "h2o-ccpvdz-ae"):
             system, coordinates = self.molecule(slug)
             self.assertEqual(system.coordinate_unit, "Angstrom")
             first_bond = coordinates[1] - coordinates[0]
@@ -166,6 +166,19 @@ class GeometryUnitTests(unittest.TestCase):
             verbose=0,
         )
         self.assertEqual(molecule.nao_nr(), 25)
+
+    def test_ccpvdz_benchmark_reference_does_not_run_full_fci(self) -> None:
+        fixtures_root = Path(__file__).resolve().parents[2] / "fixtures"
+        reference = json.loads(
+            (fixtures_root / "h2o-ccpvdz-ae" / "reference.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(reference["number_of_molecular_orbitals"], 24)
+        self.assertEqual(reference["number_of_electrons"], 10)
+        self.assertEqual(reference["determinants"], 1_806_590_016)
+        self.assertFalse(reference["point_group_symmetry"])
+        self.assertFalse(reference["full_fci_executed"])
 
 
 if __name__ == "__main__":

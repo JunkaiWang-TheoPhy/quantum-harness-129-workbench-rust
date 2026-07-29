@@ -1,6 +1,6 @@
-use thiserror::Error;
-
+use crate::combinadic::{CombinadicError, combination_count, unrank_occupation};
 use crate::problem::ElectronicProblem;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DeterminantError {
@@ -18,6 +18,12 @@ pub enum DeterminantError {
     InvalidWavefunctionSymmetry(usize),
     #[error("the requested ISYM={0} determinant sector is empty")]
     EmptySymmetrySector(usize),
+    #[error("determinant space contains {count} entries and does not fit this platform")]
+    SpaceTooLarge { count: u128 },
+    #[error("failed to allocate determinant space with {count} entries")]
+    AllocationFailed { count: usize },
+    #[error(transparent)]
+    Combinadic(#[from] CombinadicError),
 }
 
 #[derive(Debug, Clone)]
@@ -227,32 +233,18 @@ pub fn occupation_strings(orbitals: usize, electrons: usize) -> Result<Vec<u64>,
             orbitals,
         });
     }
-    if electrons == 0 {
-        return Ok(vec![0]);
+    if orbitals > 64 {
+        return Err(DeterminantError::TooManyOrbitals);
     }
-    if electrons == orbitals {
-        return Ok(vec![if orbitals == 64 {
-            u64::MAX
-        } else {
-            (1_u64 << orbitals) - 1
-        }]);
-    }
-
-    // Gosper's hack enumerates only the C(orbitals, electrons) valid strings,
-    // in the same numeric lexical order as filtering all 2^orbitals bitsets.
-    let limit = (orbitals < 64).then(|| 1_u64 << orbitals);
-    let mut bits = (1_u64 << electrons) - 1;
+    let count_u128 = combination_count(orbitals, electrons)?;
+    let count = usize::try_from(count_u128)
+        .map_err(|_| DeterminantError::SpaceTooLarge { count: count_u128 })?;
     let mut strings = Vec::new();
-    loop {
-        if limit.is_some_and(|limit| bits >= limit) {
-            break;
-        }
-        strings.push(bits);
-        let least_bit = bits & bits.wrapping_neg();
-        let Some(ripple) = bits.checked_add(least_bit) else {
-            break;
-        };
-        bits = (((ripple ^ bits) >> 2) / least_bit) | ripple;
+    strings
+        .try_reserve_exact(count)
+        .map_err(|_| DeterminantError::AllocationFailed { count })?;
+    for rank in 0..count {
+        strings.push(unrank_occupation(rank as u128, orbitals, electrons)?);
     }
     Ok(strings)
 }

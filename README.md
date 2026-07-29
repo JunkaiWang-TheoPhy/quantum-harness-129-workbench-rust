@@ -1,7 +1,7 @@
 # Rewrite It In Rust! — Electronic Structure All the Way to CC(8)
 
 [![CI](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 **28,233,466-determinant extended FCI. Arbitrary-order CC. Direct integrals.
@@ -56,6 +56,76 @@ The production algorithms run in Rust:
 PySCF is the independent oracle and fixture generator. It is used to challenge
 the Rust implementation with known answers—not to execute the checked
 production path.
+
+## Post-Challenge Hardening
+
+The validated challenge results are now a stable numerical floor rather than
+the end of the engineering work. v0.2 adds:
+
+- checked occupied/virtual active-space selection with both orbital maps;
+- exact checked combinadic count, rank, and inverse-rank operations;
+- explicit CC termination and non-finite-state diagnostics;
+- schema-versioned `cc-series --json-output` evidence.
+
+The established `freeze_core`, direct-FCI, Davidson, and CC commands remain
+compatible. The Hamiltonian and every committed published comparison are
+unchanged. See the [v0.2.0 release notes](docs/release-notes-v0.2.0.md).
+
+v0.3 adds a versioned local-NVMe Davidson workspace:
+
+- basis and sigma vectors no longer have to remain resident as a complete
+  subspace;
+- an interrupted calculation can resume from an atomically committed
+  checkpoint;
+- FCIDUMP fingerprints and numerical configuration prevent stale resumes;
+- truncated, non-finite, unsafe, or incompatible state is rejected;
+- a conservative solver-vector memory preflight runs before allocation.
+
+```bash
+cargo run --release --locked -- davidson \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  --workspace /path/to/workspace \
+  --checkpoint-every 1 \
+  --memory-budget-gib 2 \
+  --residual-tolerance 1e-7 \
+  --max-iterations 60 \
+  --max-subspace 20
+
+cargo run --release --locked -- davidson \
+  fixtures/h2o-631g-fc/FCIDUMP \
+  --workspace /path/to/workspace \
+  --resume \
+  --checkpoint-every 1 \
+  --memory-budget-gib 2 \
+  --residual-tolerance 1e-7 \
+  --max-iterations 100 \
+  --max-subspace 20
+```
+
+Disk backing reduces Davidson subspace residency; it does not eliminate the
+requirement that several full vectors fit in memory. It is not a claim of
+converged H2O/cc-pVDZ all-electron full FCI. See the
+[v0.3.0 release notes](docs/release-notes-v0.3.0.md) and
+[checkpoint format](docs/checkpoint-format.md).
+
+v0.4 adds deterministic, budgeted CPU parallelism to direct-FCI sigma:
+
+- fixed source blocks make results independent of Rayon scheduling;
+- ordered reduction makes a fixed policy bitwise repeatable;
+- memory is preflighted before thread-local vectors are allocated;
+- strict mode rejects an insufficient budget; fallback mode explains why it
+  used serial execution;
+- serial remains the compatibility default.
+
+On the 245,025-determinant primary H2O/6-31G problem, four source blocks and
+10 Rayon workers reduced median sigma time from `14.181091542 s` to
+`4.381184834 s` across five fresh release processes—a measured **3.236817x**
+ratio of medians. Maximum serial/parallel difference was `5.969e-13`.
+
+Raw measurements live in
+[`parallel-sigma-m4.json`](fixtures/h2o-631g-fc/parallel-sigma-m4.json).
+See the [v0.4.0 release notes](docs/release-notes-v0.4.0.md) and
+[incremental validation report](reports/incremental-solver-validation.md).
 
 ## The Mission Is Complete
 
@@ -297,6 +367,37 @@ H2O/STO-3G gives RHF `-74.962663067690499` and direct FCI
 `-75.012918738193051` hartree. The FCI error against PySCF is `1.485e-10`
 hartree. See [reports/level4-integrals.md](reports/level4-integrals.md).
 
+### Reviewer Follow-Up — H2O/cc-pVDZ, All Electrons, No Point-Group Symmetry
+
+The requested larger-basis benchmark now runs the Rust integral, RHF,
+AO-to-MO, determinant-link, and sparse Hamiltonian-column stages under a
+2 GiB conservative preflight budget. On the Apple M4 validation machine it
+used at most `447.25 MiB` RSS and completed in a median `1.42 s` across five
+fresh release processes. Rust RHF differs from PySCF 2.14.0 by `6.230e-11 Eh`.
+
+The exact fixed-`Nalpha=Nbeta=5` space contains `1,806,590,016` determinants.
+One full CI vector alone is `13.460145 GiB`; the current 24-pair Davidson
+subspace would require `646.086937 GiB`. The bounded command therefore does
+not allocate full vectors or claim a converged cc-pVDZ FCI energy.
+
+```bash
+cargo run --release -- benchmark h2o-cc-pvdz \
+  --sources 16 \
+  --memory-budget-gib 2 \
+  --json-output fixtures/h2o-ccpvdz-ae/benchmark-m4.json
+```
+
+See the
+[full benchmark report](reports/h2o-ccpvdz-all-electron-benchmark.md) and
+[machine-readable run](fixtures/h2o-ccpvdz-ae/benchmark-m4.json). The
+[five-process summary](fixtures/h2o-ccpvdz-ae/benchmark-m4-summary.json)
+records every raw timing and RSS observation plus aggregates that are
+recomputed in the test suite.
+
+`--memory-budget-gib` is a conservative preflight estimate, not an
+operating-system hard memory limit. The v0.1.1 spelling
+`--max-memory-gib` remains a supported alias.
+
 The required ecosystem findings are recorded in
 [reports/tenferro-gap-list.md](reports/tenferro-gap-list.md). tenferro-rs 0.2.0
 already supplies dense tensors, strided views, gather/scatter, division,
@@ -350,6 +451,16 @@ active interpreter rather than `.venv`.
   reporting.
 - [Submission PR body](docs/submission-pr-body.md) — version-controlled source
   for the upstream solution PR description.
+- [v0.2.0 release notes](docs/release-notes-v0.2.0.md) — active-space,
+  combinadic, and CC diagnostic hardening.
+- [v0.3.0 release notes](docs/release-notes-v0.3.0.md) — restartable,
+  disk-backed Davidson.
+- [v0.4.0 release notes](docs/release-notes-v0.4.0.md) — deterministic,
+  budgeted parallel sigma.
+- [Checkpoint format](docs/checkpoint-format.md) — schema, atomicity,
+  validation, and memory planning.
+- [Incremental solver validation](reports/incremental-solver-validation.md) —
+  v0.2-v0.4 correctness, compatibility, and performance evidence.
 - [v0.1.0 release notes](docs/release-notes-v0.1.0.md) — immutable inputs,
   headline values, verification commands, and release scope.
 - [Sync log](docs/sync-log.md) — relationship between this workbench and the
@@ -375,6 +486,9 @@ active interpreter rather than `.venv`.
   Davidson FCI and CC(1)-CC(8) checks at 1.5 Rₑ and 2.0 Rₑ.
 - [Multi-root Davidson and UCC report](reports/multiroot-and-ucc.md) —
   dense-verified H₄ excited roots and a full-rank 35-parameter UCC check.
+- [H2O/cc-pVDZ benchmark](reports/h2o-ccpvdz-all-electron-benchmark.md) —
+  bounded all-electron timings, memory measurements, and the explicit
+  full-space scalability boundary.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 
