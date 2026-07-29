@@ -49,10 +49,12 @@ filesystem.  This avoids parallel-filesystem metadata stalls from Cargo's
 many small files.
 
 The `libcint-src` build normally performs a Git clone.  The offline bundle
-therefore includes libcint tag `v6.1.2` with Git metadata and exact commit
-`8d13863ff481cea27efea5e56c9e4d352cdb8f80`.  The job verifies the archive
-hash, expands it locally, loads CMake 3.25, and points `CINT_SRC` at that local
-repository.
+therefore exports the tracked tree from libcint tag `v6.1.2`, upstream commit
+`8d13863ff481cea27efea5e56c9e4d352cdb8f80`, into a non-shallow one-commit Git
+snapshot tagged `v6.1.2`.  Its tree hash remains
+`3de5cd4cf6b7f3fe04d53dfeed3dc85f69eb1133`.  The job verifies the archive and
+tree hashes, expands it locally, loads CMake 3.25, and points `CINT_SRC` at
+that local repository.
 
 ### Stage 2: build and smoke gate
 

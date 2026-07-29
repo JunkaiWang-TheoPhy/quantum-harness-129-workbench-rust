@@ -110,10 +110,12 @@ archive, expand it below `$SLURM_TMPDIR`, and set `CARGO_TARGET_DIR` there.
 Copy only the final release binary to `artifacts/v0.4.0/` using a job-specific
 staging name followed by an atomic rename.
 
-Archive libcint `v6.1.2` commit
-`8d13863ff481cea27efea5e56c9e4d352cdb8f80` with its Git metadata.  On the
-compute node, load CMake 3.25, verify and expand the archive locally, set
-`CINT_SRC` to it, and export the GCC 11.4 `CC`/`CXX` paths before Cargo starts.
+Export libcint `v6.1.2` commit
+`8d13863ff481cea27efea5e56c9e4d352cdb8f80` into a non-shallow, one-commit Git
+snapshot carrying the identical tree hash
+`3de5cd4cf6b7f3fe04d53dfeed3dc85f69eb1133`.  On the compute node, load CMake
+3.25, verify and expand the archive locally, set `CINT_SRC` to it, and export
+the GCC 11.4 `CC`/`CXX` paths before Cargo starts.
 
 - [ ] **Step 3: Stage orchestration files**
 
