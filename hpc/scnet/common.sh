@@ -20,15 +20,19 @@ qh129_sha256() {
     sha256sum "$1" | awk '{print $1}'
 }
 
+qh129_git() {
+    git --git-dir="${QH129_SOURCE}/.git" --work-tree="${QH129_SOURCE}" "$@"
+}
+
 qh129_verify_source() {
     local actual_commit
     local actual_lock_sha256
     local actual_fcidump_sha256
 
     test -d "${QH129_SOURCE}/.git"
-    actual_commit="$(git -C "${QH129_SOURCE}" rev-parse HEAD)"
+    actual_commit="$(qh129_git rev-parse HEAD)"
     test "${actual_commit}" = "${QH129_EXPECTED_COMMIT}"
-    test -z "$(git -C "${QH129_SOURCE}" status --porcelain --untracked-files=no)"
+    test -z "$(qh129_git status --porcelain --untracked-files=no)"
 
     actual_lock_sha256="$(qh129_sha256 "${QH129_SOURCE}/Cargo.lock")"
     test "${actual_lock_sha256}" = "${QH129_EXPECTED_LOCK_SHA256}"
@@ -89,4 +93,3 @@ qh129_record_environment() {
         printf 'gcc=%s\n' "$(gcc --version | head -1)"
     } >"${output}"
 }
-

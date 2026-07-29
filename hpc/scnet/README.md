@@ -32,8 +32,8 @@ ssh SCNET 'mkdir -p /work/share/giggleliu/cfys01/quantum-harness-129 &&
     git clone https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust.git \
       /work/share/giggleliu/cfys01/quantum-harness-129/source-v0.4.0
   fi &&
-  git -C /work/share/giggleliu/cfys01/quantum-harness-129/source-v0.4.0 \
-    checkout --detach 48f1964a1b3b88090497e1ffce285fde09c98541'
+  cd /work/share/giggleliu/cfys01/quantum-harness-129/source-v0.4.0 &&
+  git checkout --detach 48f1964a1b3b88090497e1ffce285fde09c98541'
 
 scp -r hpc/scnet SCNET:/work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1
 ```
@@ -83,4 +83,3 @@ sbatch --array=7,11 davidson-robustness.sbatch
 
 Remote results are retained.  Download them without deleting or moving the
 remote copy.
-

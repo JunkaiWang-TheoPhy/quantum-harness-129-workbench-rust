@@ -92,7 +92,9 @@ Expected: all commands exit zero.
 - [ ] **Step 1: Create the versioned remote root**
 
 Create the remote root only if absent.  Clone the repository and detach at the
-fixed commit.  Verify `git status --porcelain` is empty.
+fixed commit.  Verify `git status --porcelain` is empty.  SCNet provides Git
+1.8.3, so run Git from the source directory or use explicit `--git-dir` and
+`--work-tree`; do not use the newer `git -C` option.
 
 - [ ] **Step 2: Stage orchestration files**
 
@@ -162,4 +164,3 @@ git diff --check
 ```
 
 Expected: every command exits zero.
-
