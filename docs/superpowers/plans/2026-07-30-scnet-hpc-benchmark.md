@@ -98,9 +98,11 @@ fixed commit.  Verify `git status --porcelain` is empty.  SCNet provides Git
 
 - [ ] **Step 2: Prefetch the immutable build inputs**
 
-On the login node, install Rust 1.89 into the shared toolchain directory and
-run `cargo fetch --locked` for the pinned manifest.  Compute nodes have no
-external DNS, so the scheduled build must use `cargo build --offline` and
+On a connected machine, checksum the official standalone Rust 1.89 Linux
+archive and run `cargo vendor --locked --versioned-dirs` for the pinned
+manifest.  Upload both to the shared toolchain directory and install Rust at
+`toolchains/rust-1.89.0`.  Compute nodes have no external DNS, so the scheduled
+build must set `CARGO_NET_OFFLINE=true` and use `cargo build --offline` and
 `cargo test --offline`.
 
 - [ ] **Step 3: Stage orchestration files**

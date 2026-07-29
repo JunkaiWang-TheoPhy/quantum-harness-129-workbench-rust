@@ -11,8 +11,9 @@ readonly QH129_REMOTE_ROOT="${QH129_REMOTE_ROOT:-/work/share/giggleliu/cfys01/qu
 readonly QH129_SOURCE="${QH129_SOURCE:-${QH129_REMOTE_ROOT}/source-v0.4.0}"
 readonly QH129_RUN_ROOT="${QH129_RUN_ROOT:-${QH129_REMOTE_ROOT}/runs}"
 readonly QH129_TOOLCHAIN_ROOT="${QH129_TOOLCHAIN_ROOT:-${QH129_REMOTE_ROOT}/toolchains}"
-readonly QH129_RUSTUP_HOME="${QH129_RUSTUP_HOME:-${QH129_TOOLCHAIN_ROOT}/rustup}"
+readonly QH129_RUST_HOME="${QH129_RUST_HOME:-${QH129_TOOLCHAIN_ROOT}/rust-1.89.0}"
 readonly QH129_CARGO_HOME="${QH129_CARGO_HOME:-${QH129_TOOLCHAIN_ROOT}/cargo}"
+readonly QH129_VENDOR_ROOT="${QH129_VENDOR_ROOT:-${QH129_TOOLCHAIN_ROOT}/vendor}"
 readonly QH129_BINARY="${QH129_BINARY:-${QH129_SOURCE}/target/release/ed_workbench_rs}"
 readonly QH129_FCIDUMP="${QH129_FCIDUMP:-${QH129_SOURCE}/fixtures/h2o-631g-fc/FCIDUMP}"
 
@@ -42,16 +43,15 @@ qh129_verify_source() {
 }
 
 qh129_activate_toolchain() {
-    export RUSTUP_HOME="${QH129_RUSTUP_HOME}"
     export CARGO_HOME="${QH129_CARGO_HOME}"
-    export PATH="${QH129_CARGO_HOME}/bin:${PATH}"
+    export PATH="${QH129_RUST_HOME}/bin:${QH129_CARGO_HOME}/bin:${PATH}"
+    export CARGO_NET_OFFLINE=true
 }
 
 qh129_require_toolchain() {
     qh129_activate_toolchain
-    command -v rustup >/dev/null 2>&1
-    rustup toolchain list | grep -E '^1\.89\.0(-[^ ]+)? '
-    rustup default 1.89.0
+    test -d "${QH129_VENDOR_ROOT}"
+    test -f "${QH129_CARGO_HOME}/config.toml"
     rustc --version | grep -F 'rustc 1.89.0 '
     cargo --version
 }

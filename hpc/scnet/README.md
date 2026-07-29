@@ -21,28 +21,28 @@ uses 1,008 cores.
 The remote source checkout must be detached at the fixed commit and clean.
 Orchestration scripts are staged outside that checkout.
 
-## Prefetch on the login node
+## Stage an offline toolchain
 
-SCNet compute nodes do not provide external DNS.  Install the pinned toolchain
-and fetch locked Cargo dependencies on the login node before submitting a
-build:
+SCNet compute nodes do not provide external DNS.  Download the official
+`rust-1.89.0-x86_64-unknown-linux-gnu.tar.xz` archive on a connected machine,
+verify it against the accompanying `.sha256` file, and install it under:
 
 ```bash
-export RUSTUP_HOME=/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/rustup
-export CARGO_HOME=/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/cargo
-export PATH="$CARGO_HOME/bin:$PATH"
-
-curl --proto '=https' --tlsv1.2 --retry 3 --fail --silent --show-error \
-  https://sh.rustup.rs |
-  sh -s -- -y --profile minimal --default-toolchain 1.89.0
-
-cargo fetch --locked \
-  --manifest-path \
-  /work/share/giggleliu/cfys01/quantum-harness-129/source-v0.4.0/Cargo.toml
+/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/rust-1.89.0
 ```
 
-The scheduled job uses Cargo `--offline`; a missing toolchain or crate fails
-the smoke gate instead of attempting network access from a compute node.
+On the connected machine, generate the exact dependency tree:
+
+```bash
+cargo vendor --locked --versioned-dirs /temporary/vendor
+```
+
+Upload it to
+`/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/vendor` and place
+the generated source-replacement configuration in
+`toolchains/cargo/config.toml`.  The scheduled job sets
+`CARGO_NET_OFFLINE=true`; a missing toolchain or crate fails the smoke gate
+instead of attempting network access from a compute node.
 
 ## Stage source and scripts
 
@@ -63,6 +63,10 @@ scp -r hpc/scnet SCNET:/work/share/giggleliu/cfys01/quantum-harness-129/orchestr
 
 `SCNET` denotes the user's configured SSH command or host alias.  Private-key
 paths are intentionally not stored in this repository.
+
+Copy `hpc/scnet/cargo-config.toml` to
+`/work/share/giggleliu/cfys01/quantum-harness-129/toolchains/cargo/config.toml`
+after staging the vendor tree.
 
 ## Submit the gated run
 
