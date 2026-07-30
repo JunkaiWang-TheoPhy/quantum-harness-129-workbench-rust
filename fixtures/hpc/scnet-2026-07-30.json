@@ -766,6 +766,12 @@
       "mean": 2.852361111111111,
       "maximum": 4.27
     },
+    "cpu_percent": {
+      "minimum": 1704.0,
+      "median": 2068.0,
+      "mean": 2062.5833333333335,
+      "maximum": 2406.0
+    },
     "max_rss_kib": {
       "minimum": 173680.0,
       "median": 187654.0,

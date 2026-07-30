@@ -44,7 +44,7 @@ qh129_activate_toolchain
 qh129_verify_source
 test -x "${QH129_BINARY}"
 
-export RAYON_NUM_THREADS=16
+export RAYON_NUM_THREADS=14
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -57,8 +57,8 @@ export MKL_NUM_THREADS=1
     printf 'residual_tolerance=%s\n' "${TOLERANCE}"
     printf 'max_subspace=%s\n' "${SUBSPACE}"
     printf 'max_iterations=100\n'
-    printf 'parallel_blocks=16\n'
-    printf 'rayon_threads=16\n'
+    printf 'parallel_blocks=14\n'
+    printf 'rayon_threads=14\n'
     printf 'replicates_per_group=%s\n' "${REPLICATES_PER_GROUP}"
     printf 'reference_energy_eh=%s\n' "${QH129_REFERENCE_ENERGY}"
     printf 'started_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -79,7 +79,7 @@ for ((offset = 0; offset < REPLICATES_PER_GROUP; offset++)); do
         --residual-tolerance "${TOLERANCE}" \
         --max-iterations 100 \
         --max-subspace "${SUBSPACE}" \
-        --parallel-blocks 16 \
+        --parallel-blocks 14 \
         --parallel-memory-budget-gib 2 \
         --strict-parallel-memory \
         >"${replicate_dir}/davidson.stdout" \

@@ -436,6 +436,9 @@ active interpreter rather than `.venv`.
 - [H2O/cc-pVDZ benchmark](reports/h2o-ccpvdz-all-electron-benchmark.md) —
   bounded all-electron timings, memory measurements, and the explicit
   full-space scalability boundary.
+- [SCNet HPC benchmark](reports/scnet-hpc-benchmark.md) — offline build gate,
+  18-case Davidson robustness matrix, 216-solve repeatability evidence,
+  observed concurrency, and the fail-closed 1,008-CPU gang submission.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 

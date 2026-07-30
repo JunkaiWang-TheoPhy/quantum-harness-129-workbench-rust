@@ -145,16 +145,16 @@ For a gang-scheduled, utilization-oriented thousand-core run, submit:
 ssh SCNET 'cd /work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1 &&
   sbatch --parsable \
     --export=ALL,QH129_ORCHESTRATION=$PWD \
-    davidson-gang-1152.sbatch'
+    davidson-gang-1008.sbatch'
 ```
 
 This job requests 18 nodes at once and starts 72 independent processes:
-4 processes per node, 16 Rayon threads per process, for `72 × 16 = 1,152`
+4 processes per node, 14 Rayon threads per process, for `72 × 14 = 1,008`
 concurrent CPUs.  Process `p` evaluates case `floor(p / 4)` and one of four
 three-replicate groups, yielding the same 18 cases and 216 total samples.  The
 gang allocation cannot run as a partial array, and packing four moderately
 threaded solvers per node avoids treating idle capacity inside one 56-CPU
-small-system solve as useful parallel work.  If the association lacks 1,152
+small-system solve as useful parallel work.  If the association lacks 1,008
 free CPUs, Slurm safely leaves the job pending with `AssocGrpCpuLimit`.
 
 ## Failure and resubmission

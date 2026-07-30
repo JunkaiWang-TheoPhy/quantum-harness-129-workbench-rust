@@ -295,6 +295,9 @@ def main() -> None:
         float(sample["timing"]["max_rss_kib"])
         for sample in replicate_samples
     ]
+    replicate_cpu = [
+        sample["timing"]["cpu_percent"] for sample in replicate_samples
+    ]
     environment = parse_env(preflight_root / "environment-final.env")
 
     output = {
@@ -381,6 +384,7 @@ def main() -> None:
                 "range": max(replicate_energies) - min(replicate_energies),
             },
             "wall_seconds": aggregate(replicate_walls),
+            "cpu_percent": aggregate(replicate_cpu),
             "max_rss_kib": aggregate(replicate_rss),
             "cases": replicate_cases,
             "scheduler": replicate_scheduler,
