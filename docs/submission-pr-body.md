@@ -19,7 +19,7 @@
 | Members | Chenxi Wan, Yedi Shen, Junkai Wang |
 | Challenge | [#129 — Exact diagonalization workbench in Rust for electronic structure method development](https://github.com/QuantumBFS/quantum.harness/issues/129) |
 | Public workbench | [`JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust) |
-| Release | [`v0.1.0`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.1.0) |
+| Stable release | [`v0.4.0`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.4.0) |
 | License | AGPL-3.0 |
 
 This PR contains the completed public submission, not a development
@@ -62,13 +62,13 @@ precision rather than inventing unprinted digits.
 
 ## Evidence and reproduction
 
-- [Standalone reproduction prompt](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/docs/reproduction-prompt.md)
-- [FCI report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/reports/level1-direct-fci.md)
-- [CC(1)-CC(8) report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/reports/level2-cc-accuracy.md)
-- [CI/MBPT/UCC report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/reports/level3-methods.md)
-- [Direct-integral report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/reports/level4-integrals.md)
-- [Machine-readable CC results](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/fixtures/h2o-631g-fc/cc_series_results.json)
-- [Machine-readable CI/MBPT results](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.1.0/fixtures/h2o-631g-fc/level3_series_results.json)
+- [Standalone reproduction prompt](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/docs/reproduction-prompt.md)
+- [FCI report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/reports/level1-direct-fci.md)
+- [CC(1)-CC(8) report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/reports/level2-cc-accuracy.md)
+- [CI/MBPT/UCC report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/reports/level3-methods.md)
+- [Direct-integral report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/reports/level4-integrals.md)
+- [Machine-readable CC results](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/fixtures/h2o-631g-fc/cc_series_results.json)
+- [Machine-readable CI/MBPT results](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.4.0/fixtures/h2o-631g-fc/level3_series_results.json)
 - [Continuous verification](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
 
 Normal local acceptance is one command after installing the pinned oracle
@@ -81,6 +81,40 @@ scripts/verify-submission.sh
 The public repository also provides a manual `Primary live acceptance`
 workflow for complete CC(1)-CC(8) and CI(1)-CI(8)/MBPT(1)-MBPT(20)
 recalculations.
+
+## Final competition update
+
+The final experimental integration goes beyond the stable v0.4.0 baseline
+while preserving every primary acceptance result:
+
+- H₂O/cc-pVDZ all electron converged in the exact C₂ᵥ/A1 block with
+  451,681,246 determinants: `−76.24321859 Eh`, residual `6.602e-8`, 21
+  Davidson iterations, and 3:55:43 wall time.
+- The symmetry-free 1,806,590,016-determinant representation was bounded and
+  benchmarked but not solved to convergence.
+- SCNet completed 18/18 robustness cases and 216/216 repeated solves. The
+  observed peak was 560 allocated CPUs across ten independent tasks; 1,008
+  CPUs were requested but not observed. This is ensemble throughput, not MPI
+  scaling of one Davidson solve.
+- The article responds to the reviewer directions with resource estimates, a
+  fair exact-FCI/selected-CI/NISQ comparison, and a concrete HCI/iCI + EN-PT2
+  + orbital-optimization roadmap. These methods are future work, not claimed
+  implementations.
+
+Canonical experimental-extension artifacts on
+`codex/final-competition-submission`:
+
+- [final competition report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/final-competition-summary.md)
+- [C₂ᵥ/A1 FCI report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/h2o-ccpvdz-c2v-fci.md)
+- [SCNet report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/scnet-hpc-benchmark.md)
+- [machine-readable final evidence](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json)
+
+The final verifier recomputes immutable input/log/script hashes and enforces
+the scope boundaries. The exact production `src/direct_fci.rs` and the raw
+Slurm accounting row for job 23008083 were unavailable in the final audit;
+the result remains scientifically accepted within its residual tolerance but
+is explicitly marked as having incomplete provenance. For that reason v0.4.0
+remains the stable release and the extension is not mislabeled v0.5.0.
 
 ## tenferro-rs findings
 
@@ -102,6 +136,6 @@ calculations are extended targets and are not claimed in this release.
 - [ ] Inspect the Level 0-4 architecture and design decisions in this solution
   README.
 - [ ] Confirm the standalone reproduction prompt is present.
-- [ ] Confirm the public `v0.1.0` source and FCIDUMP checksums resolve.
+- [ ] Confirm the stable `v0.4.0` source and FCIDUMP checksums resolve.
 - [ ] Confirm the normal CI workflow is green.
 - [ ] Review the primary FCI/CC/CI/MBPT tables and tenferro-rs gap list.

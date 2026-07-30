@@ -65,9 +65,12 @@ is, in preference order:
 
 ### Slurm accounting
 
-Raw pipe-delimited `sacct` output for jobs 23008083 and 23015354 is stored
-unchanged. Summaries derive allocated CPUs, elapsed time, exit status, and
-MaxRSS from raw records rather than hand-transcribed Markdown or JSON.
+The final audit could log in to XH5 as the available `cfys01` and `acamtw70yu`
+identities, but jobs 23008083 and 23015354 belong to another account and were
+not returned by `sacct`; `/work/home/qbics2622` is also inaccessible. No raw
+accounting file is fabricated. The machine-readable result marks raw
+accounting and MaxRSS verification false, and public prose labels the memory
+number as a transcribed scheduler summary.
 
 ### Numerical presentation
 

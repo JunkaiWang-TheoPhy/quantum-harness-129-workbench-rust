@@ -5,7 +5,7 @@ the `WangTheoPhys` Rust exact-diagonalization workbench. Do not rely on chat
 history or regenerate committed oracle data unless a separate oracle-generation
 check is explicitly requested.
 
-## Source and validated revision
+## Source and primary validated revision
 
 - Repository:
   `https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`
@@ -229,3 +229,44 @@ units, fixture bytes, or paper-rounding policy.
 The Kállay 2001 DZ/DZP calculations are extended targets and are not included
 in this validated revision. Do not describe the primary 6-31G results as
 validation of those different Hamiltonians.
+
+## Final competition evidence extension
+
+The stable primary acceptance above remains immutable. The post-submission
+integration branch `codex/final-competition-submission` adds v0.4.0 parallel
+sigma evidence, SCNet robustness/repeatability data, symmetry support, and the
+all-electron H₂O/cc-pVDZ C₂ᵥ/A1 result. Record the exact checked-out commit
+with `git rev-parse HEAD` before auditing it.
+
+Run the fail-closed evidence check:
+
+```bash
+python3 scripts/hpc/verify_final_evidence.py
+```
+
+It must report all of the following together:
+
+- C₂ᵥ/A1 full CI: 451,681,246 determinants, `-76.24321859 Eh`, residual at
+  most `1e-7`;
+- immutable FCIDUMP, stdout, stderr, and production-script hashes match;
+- the symmetry-free 1,806,590,016-determinant solve is not claimed;
+- SCNet completed 18 robustness cases and 216 repeated solves;
+- 560 CPUs were observed and 1,008 CPUs were requested but not observed;
+- neither a thousand-CPU single solve nor an independent same-Hamiltonian FCI
+  oracle is claimed;
+- the absent raw `sacct` row and exact production `direct_fci.rs` remain
+  disclosed as provenance gaps.
+
+The C₂ᵥ calculation requires a large-memory node and is not part of routine
+local acceptance. Inspect its immutable evidence instead:
+
+```bash
+cargo test --locked --test ccpvdz_fci_result --test scnet_hpc_fixture
+```
+
+Read `reports/final-competition-summary.md` for the integrated result ladder,
+HPC efficiency interpretation, selected-CI/NISQ comparison, and reviewer
+response. Do not promote the experimental extension to a release-quality
+byte-for-byte reproduction claim unless the missing production source and raw
+Slurm accounting are recovered or a canonical public-commit rerun replaces
+the archived run.

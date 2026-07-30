@@ -43,6 +43,9 @@ Every headline result is backed by committed fixtures, machine-readable
 evidence, reproduction commands, and a dedicated report.
 The [data provenance register](reports/data-provenance.md) distinguishes
 paper transcriptions, PySCF oracles, Rust results, and hardware measurements.
+The [final competition report](reports/final-competition-summary.md) integrates
+the method ladder, SCNet limits, fair selected-CI/NISQ comparison, reviewer
+responses, and explicit claim boundaries.
 
 ## This Is Not a Wrapper
 

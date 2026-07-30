@@ -8,6 +8,16 @@
 
 **Tech Stack:** Rust 1.89, Cargo, Rayon, nalgebra, serde/serde_json, Python 3.12 with uv 0.11.32/PySCF 2.14.0, Slurm `sacct`, Git/GitHub Actions, Markdown.
 
+## Final Audit Deviation
+
+The available local SSH identities can reach XH5 but cannot read the
+`qbics2622` production directory or obtain jobs 23008083/23015354 from
+`sacct`. Therefore the two planned raw accounting files are intentionally not
+created. Task 2 is resolved by explicit unavailability fields and a
+fail-closed verifier: the transcribed MaxRSS is unverified and the 1,008-CPU
+request remains unobserved. This follows the approved design's third
+provenance option and avoids fabricating evidence.
+
 ## Global Constraints
 
 - Competition sprint duration is approximately five hours on 2026-07-30.
@@ -27,8 +37,6 @@
 ### Create
 
 - `reports/final-competition-summary.md`: canonical competition article and claim table.
-- `fixtures/h2o-ccpvdz-ae/xh5/production-23008083.sacct`: raw pipe-delimited Slurm accounting.
-- `fixtures/hpc/scnet-23015354.sacct`: raw accounting for the 1,008-CPU gang submission.
 - `scripts/hpc/verify_final_evidence.py`: raw accounting, hashes, job state, and claim-boundary validator.
 - `tests/final_competition_evidence.rs`: Rust regression over the final machine-readable evidence and human-facing precision.
 - `docs/plans/2026-07-30-final-competition-submission-design.md`: approved final-sprint design.

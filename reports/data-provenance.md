@@ -48,8 +48,9 @@ must not be attributed to a six-decimal literature table.
   electron-repulsion, orbital, and transformed-integral data.
 - `fixtures/h2o-dzp-fc/generation_metadata.json` explicitly records that
   PySCF FCI was skipped by a size guard.
-- `fixtures/h2o-ccpvdz-ae/pyscf-crosscheck.json` contains the independent
-  same-input method hierarchy through CCSD(T).
+- `fixtures/h2o-ccpvdz-ae/pyscf-crosscheck.json` contains a separately run
+  same-input method hierarchy through CCSD(T). It is a scale check, not an
+  independent FCI oracle for the 451-million-dimensional A1 problem.
 
 ### Literature transcriptions
 
@@ -76,8 +77,9 @@ must not be attributed to a six-decimal literature table.
   `benchmark-m4-summary.json` are bounded Apple M4 cc-pVDZ kernel
   measurements, not full-FCI timings.
 - `fixtures/h2o-ccpvdz-ae/xh5/production-23008083.*` are unedited Slurm logs.
-  Slurm step `MaxRSS`, not `/usr/bin/time` around the `srun` launcher, is the
-  authoritative remote-process memory observation.
+  The recorded step `MaxRSS` was transcribed from a scheduler summary; the raw
+  `sacct` row is not archived and was inaccessible during the final audit, so
+  it must not be presented as independently verified accounting evidence.
 
 ## Interpretation rules
 
