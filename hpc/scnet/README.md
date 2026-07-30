@@ -139,6 +139,24 @@ repeatability while giving the scheduler enough time to establish full array
 concurrency.  No artificial delay is used.  Each task writes a `summary.tsv`
 plus the stdout, stderr, GNU time report, and hashes for every replicate.
 
+For a gang-scheduled, utilization-oriented thousand-core run, submit:
+
+```bash
+ssh SCNET 'cd /work/share/giggleliu/cfys01/quantum-harness-129/orchestration-v1 &&
+  sbatch --parsable \
+    --export=ALL,QH129_ORCHESTRATION=$PWD \
+    davidson-gang-1152.sbatch'
+```
+
+This job requests 18 nodes at once and starts 72 independent processes:
+4 processes per node, 16 Rayon threads per process, for `72 × 16 = 1,152`
+concurrent CPUs.  Process `p` evaluates case `floor(p / 4)` and one of four
+three-replicate groups, yielding the same 18 cases and 216 total samples.  The
+gang allocation cannot run as a partial array, and packing four moderately
+threaded solvers per node avoids treating idle capacity inside one 56-CPU
+small-system solve as useful parallel work.  If the association lacks 1,152
+free CPUs, Slurm safely leaves the job pending with `AssocGrpCpuLimit`.
+
 ## Failure and resubmission
 
 Every task writes an isolated directory below:
