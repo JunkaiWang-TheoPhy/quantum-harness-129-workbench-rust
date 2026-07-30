@@ -145,6 +145,9 @@ multi-node strong scaling of one Davidson eigenproblem.
 
 * [v0.5.0 release](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.5.0)
 * [corrective final report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/final-competition-summary.md)
+* [downloadable final technical report (PDF)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/pdf/quantum-harness-129-final-technical-report.pdf)
+* [plain-text final results](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/data/quantum-harness-129-final-results.txt)
+* [submission checksum manifest](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/quantum-harness-129-submission-manifest.txt)
 * [standalone reproduction prompt](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/docs/reproduction-prompt.md)
 * [C₂ᵥ FCI report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/h2o-ccpvdz-c2v-fci.md)
 * [machine-readable C₂ᵥ result](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json)

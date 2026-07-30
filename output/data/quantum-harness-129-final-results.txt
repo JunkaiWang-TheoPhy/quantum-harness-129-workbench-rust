@@ -1,0 +1,60 @@
+QUANTUM HARNESS #129 - FINAL RESULTS
+====================================
+Date: 2026-07-30
+Team: Ranger (Chenxi Wan, Yedi Shen, Junkai Wang)
+Repository: https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust
+Upstream PR: https://github.com/QuantumBFS/quantum.harness/pull/217
+Validated evidence commit: 720307ad6ecef3a39b2135ccf7ad53c2962f12ab
+
+MANDATORY ACCEPTANCE
+--------------------
+Status: COMPLETE (100%)
+System: H2O/6-31G, oxygen 1s frozen, 12 active orbitals, 8 active electrons
+Determinants: 245,025
+FCI energy (Eh): -76.121174204141965
+CC: 8/8 published entries match (CC(1)-CC(8))
+CI: 8/8 published entries match (CI(1)-CI(8))
+MBPT: 20/20 published entries match (MBPT(1)-MBPT(20))
+Published entries matched in total: 36/36
+
+LARGEST CONVERGED EXACT SECTOR
+------------------------------
+System: H2O/cc-pVDZ, all electron, C2v/A1
+Determinants: 451,681,246
+Reported FCI energy (Eh): -76.24321859
+Residual norm: 6.602e-08
+Davidson iterations: 21
+Wall time: 03:55:43
+Job state / exit: COMPLETED / 0:0
+Provenance status: scientific result accepted; production provenance incomplete
+
+HPC EVIDENCE
+------------
+Robustness cases: 18/18
+Repeated solves: 216/216
+Observed peak CPUs: 560
+Requested but not observed: 1,008 CPUs
+Interpretation: ensemble throughput, not MPI scaling of one solve
+
+IMPLEMENTED CONTRIBUTIONS
+-------------------------
+1. Exact ranked subset-convolution recurrence for determinant CC(n) through CC(8).
+2. Matrix-free spin-free sigma FCI with restarted Davidson.
+3. Deterministic fixed-block parallel sigma with ordered reduction.
+4. Compact point-group symmetry sectors propagated through FCI/CI/MBPT/CC/UCC.
+5. Versioned disk-backed checkpoint/resume with atomic state and hash guards.
+6. Multi-root block Davidson and general active-space combinadic indexing.
+7. Direct libcint -> Rust RHF/DIIS -> AO-to-MO -> FCI path.
+8. Fail-closed, machine-readable evidence and claim boundaries.
+
+NOT CLAIMED
+-----------
+- Converged symmetry-free 1,806,590,016-determinant FCI
+- Observed 1,008-CPU execution or single-solve MPI scaling
+- HCI/iCI, EN-PT2, natural orbitals, orbital optimization, or quantum advantage
+
+REPRODUCTION
+------------
+uv sync --locked
+scripts/verify-submission.sh
+python3 scripts/hpc/verify_final_evidence.py

@@ -1,0 +1,12 @@
+QUANTUM HARNESS #129 - SUBMISSION MANIFEST
+==========================================
+Validated evidence commit: 720307ad6ecef3a39b2135ccf7ad53c2962f12ab
+Format: SHA256  BYTES  PATH
+
+49300c48cd335069a049e6953a691d7a854bf3d77ff1cda4ea06281c3d2bf3ac  12439  reports/final-competition-summary.md
+544cac4dbdd77049c77ccecdd9459a1acfc5481be197784b55942b28f7dc3f6e  77575  output/pdf/quantum-harness-129-final-technical-report.pdf
+1746cb60183da1b329895a3993672ebd0e4e53292e7ec59d9986449f0adff2e3  2269  output/data/quantum-harness-129-final-results.txt
+dd90b2e030c9148f79e9bc4454dd2d48e0cf6f10333c89faffc96c475f5dfc82  5739  fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json
+de68876b89920c6c1ff28c1a2c6dbe4c27178b48ed07cb59e3b26d5a3d3b4cdf  142054  fixtures/hpc/scnet-2026-07-30.json
+cff83b3ac0bbcc11ed822c50b77630ecff4f1fab00947ced88328a8f1addfec5  11310  docs/reproduction-prompt.md
+4c4a8bc746580826b31b2b56a673b210fd2d72188b10f2148d6457fb8056c6b0  6503  scripts/hpc/verify_final_evidence.py
