@@ -139,7 +139,8 @@ busy on average for this small determinant space.
 
 ## Utilization-Oriented 1,008-CPU Design
 
-The submitted gang job addresses the per-solve saturation directly:
+The replacement gang job, SCNet job `23015354`, addresses the per-solve
+saturation directly:
 
 ```text
 18 nodes
@@ -234,7 +235,7 @@ The completed evidence proves:
   subspace matrix;
 - 216 repeated solves are deterministic per case and numerically consistent;
 - the completed runs reached an observed peak of 560 allocated CPUs;
-- a utilization-oriented 1,008-CPU gang job has been prepared for submission.
+- a utilization-oriented 1,008-CPU gang job has been submitted as `23015354`.
 
 It does not prove:
 
