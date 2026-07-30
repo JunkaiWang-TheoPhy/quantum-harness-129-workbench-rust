@@ -30,7 +30,7 @@ RHF, and FCI.
 | Extended H2O/DZP frozen-core space | **28,233,466 determinants** |
 | Extended H2O/DZP Davidson FCI | **−76.256624441300147 Hartree** |
 | H2O/cc-pVDZ all-electron C₂ᵥ A1 space | **451,681,246 determinants** |
-| H2O/cc-pVDZ all-electron Davidson FCI | **−76.243218589558566 Hartree** |
+| H2O/cc-pVDZ all-electron C₂ᵥ/A1 Davidson FCI | **−76.24321859 Hartree** |
 | cc-pVDZ final residual / Slurm wall time | **6.602e-8 / 3:55:43** |
 | Hirata 2000 CC table | **CC(1)-CC(8): 8/8 entries matched** |
 | Hirata 2000 CI and MBPT tables | **28/28 entries matched** |
@@ -163,14 +163,18 @@ six decimals printed by Kállay 2001. No primary 6-31G result is presented as
 evidence for a different Hamiltonian. RIIR means rewriting the
 implementation—not rewriting the scientific claim.
 
-The all-electron H2O/cc-pVDZ extension is also complete in the C₂ᵥ ground-state
+The all-electron H2O/cc-pVDZ extension is complete in the C₂ᵥ ground-state
 A1 sector. Spatial symmetry reduces the fixed-`Nalpha=Nbeta=5` space from
 1,806,590,016 to 451,681,246 determinants without freezing electrons or
 orbitals. Slurm job `23008083` converged to
-`-76.243218589558566` Hartree with residual `6.602e-8` in 3:55:43. An
-independent same-geometry PySCF 2.14.0 calculation through CCSD(T), the exact
-FCIDUMP checksum, unedited Slurm logs, and the literature precision boundary
-are all committed.
+`-76.24321859` Hartree with residual `6.602e-8` in 3:55:43. The
+1,806,590,016-determinant symmetry-free space was not solved. Same-geometry
+PySCF 2.14.0 calculations through CCSD(T) check the expected hierarchy and
+energy scale; they are not an independent FCI oracle. The exact FCIDUMP
+checksum and unedited Slurm logs are committed. The exact production
+`src/direct_fci.rs` is not archived, and the reported Slurm MaxRSS cannot be
+verified from raw accounting with the repository credentials used in the
+final audit; both provenance limits are recorded machine-readably.
 
 ## Quick Start
 

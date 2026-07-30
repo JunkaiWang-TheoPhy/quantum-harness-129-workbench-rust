@@ -39,9 +39,16 @@ fn committed_ccpvdz_fci_evidence_is_self_consistent() {
         serde_json::json!(basis.len())
     );
     assert_eq!(
-        result["result"]["total_energy_hartree_text"],
-        "-76.243218589558566"
+        result["result"]["reported_total_energy_hartree_text"],
+        "-76.24321859"
     );
+    assert_eq!(result["claim_boundary"]["symmetry_adapted_full_fci"], true);
+    assert_eq!(result["claim_boundary"]["symmetry_free_full_fci"], false);
+    assert_eq!(
+        result["claim_boundary"]["independent_same_hamiltonian_fci_oracle"],
+        false
+    );
+    assert_eq!(result["claim_boundary"]["thousand_cpu_single_solve"], false);
     assert_eq!(result["result"]["converged"], true);
     assert!(
         result["result"]["residual_norm"].as_f64().unwrap()
@@ -49,9 +56,17 @@ fn committed_ccpvdz_fci_evidence_is_self_consistent() {
     );
     assert_eq!(result["hpc"]["state"], "COMPLETED");
     assert_eq!(result["hpc"]["exit_code"], "0:0");
+    assert_eq!(result["hpc"]["raw_sacct_archived"], false);
+    assert_eq!(result["hpc"]["max_rss_verified_from_raw_accounting"], false);
+    assert_eq!(
+        result["reproducibility"]["exact_production_source_archived"],
+        false
+    );
+    assert_eq!(result["acceptance"]["provenance_complete"], false);
     assert_eq!(result["acceptance"]["accepted"], true);
 
     let fci = result["result"]["total_energy_hartree"].as_f64().unwrap();
+    assert!((fci - (-76.24321859)).abs() < 5.0e-9);
     let rhf = crosscheck["rhf"]["total_energy_hartree"].as_f64().unwrap();
     let cisd = crosscheck["cisd"]["total_energy_hartree"].as_f64().unwrap();
     let ccsd_t = crosscheck["ccsd_t"]["total_energy_hartree"]

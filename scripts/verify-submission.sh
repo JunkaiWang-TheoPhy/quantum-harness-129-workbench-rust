@@ -81,6 +81,7 @@ if [[ ! -x "$python_bin" ]] && ! command -v "$python_bin" >/dev/null 2>&1; then
   printf 'Python oracle environment not found: %s\n' "$python_bin" >&2
   exit 1
 fi
+"$python_bin" scripts/hpc/verify_final_evidence.py
 "$python_bin" -m unittest scripts.oracle.test_units -v
 
 verification_tmp=$(mktemp -d)

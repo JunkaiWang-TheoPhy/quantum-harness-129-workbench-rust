@@ -19,6 +19,12 @@
     "fcidump_isym": 1,
     "determinants": 451681246
   },
+  "claim_boundary": {
+    "symmetry_adapted_full_fci": true,
+    "symmetry_free_full_fci": false,
+    "independent_same_hamiltonian_fci_oracle": false,
+    "thousand_cpu_single_solve": false
+  },
   "input": {
     "generator": "scripts/oracle/validate_ccpvdz_fci.py --fcidump-output",
     "path": "fixtures/h2o-ccpvdz-ae/FCIDUMP.c2v",
@@ -67,6 +73,7 @@
   },
   "result": {
     "total_energy_hartree_text": "-76.243218589558566",
+    "reported_total_energy_hartree_text": "-76.24321859",
     "total_energy_hartree": -76.24321858955857,
     "correlation_energy_hartree_against_pyscf_rhf": -0.217425994653681,
     "residual_norm": 6.602e-8,
@@ -105,13 +112,18 @@
     "memory_request_gib": 384,
     "max_rss_kib": 233052988,
     "max_rss_gib": 222.256649017334,
+    "raw_sacct_archived": false,
+    "max_rss_verified_from_raw_accounting": false,
+    "accounting_status": "manually transcribed scheduler summary; raw accounting is unavailable to the repository credentials used for the final audit",
     "swap_events_reported_by_wrapper": 0,
     "stdout": "fixtures/h2o-ccpvdz-ae/xh5/production-23008083.out",
     "stderr": "fixtures/h2o-ccpvdz-ae/xh5/production-23008083.err"
   },
   "reproducibility": {
     "source_base_commit": "0879b0e",
-    "production_source_note": "uploaded tree based on 0879b0e plus the cache-friendly deterministic reduction in src/direct_fci.rs; the archived source differs only by cargo fmt whitespace",
+    "source_status": "archived run with disclosed source gap",
+    "exact_production_source_archived": false,
+    "production_source_note": "the production tree was based on 0879b0e plus a cache-friendly deterministic reduction in src/direct_fci.rs; its recorded direct_fci.rs hash does not match the archived source, and the exact production file or patch is unavailable",
     "production_source_sha256": {
       "src/direct_fci.rs": "da196f94adc819c662804bcfc5dc9a390b17ebd88a871733365ced9c1649d063",
       "src/davidson.rs": "5783f48e0cd893c6cb226ef3a742b37435639b23f6e96a92d1fe234fc8960016",
@@ -131,6 +143,8 @@
     "expected_energy_hierarchy": true,
     "same_input_rhf_cross_check": true,
     "literature_scale_cross_check": true,
+    "scientific_result_accepted": true,
+    "provenance_complete": false,
     "accepted": true
   }
 }

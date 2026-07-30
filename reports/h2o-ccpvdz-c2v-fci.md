@@ -12,18 +12,19 @@ Date: 2026-07-30
 | Point group and target irrep | C₂ᵥ, A1 (`ISYM=1`) |
 | Determinants without point-group symmetry | 1,806,590,016 |
 | Determinants in the A1 block | 451,681,246 |
-| Rust Davidson FCI energy | **−76.243218589558566 Hartree** |
+| Rust Davidson FCI energy (reported precision) | **−76.24321859 Hartree** |
 | Residual norm | **6.602 × 10⁻⁸** |
 | Davidson iterations | 21 |
 | Converged | `true` |
 | Slurm job | `23008083`, `COMPLETED`, exit `0:0` |
 | Wall time | 3:55:43 |
-| Final Slurm step MaxRSS | 233,052,988 KiB = 222.257 GiB |
+| Slurm step MaxRSS | 222.257 GiB (transcribed; raw accounting unavailable) |
 
 This is a converged full-configuration-interaction result for the finite
 Hamiltonian stored in `FCIDUMP.c2v`. "Full" means that all determinants with
 the required electron number, spin projection, and A1 spatial symmetry are
-included. No active orbital or electron was removed.
+included. No active orbital or electron was removed. It is not a completed
+solve of the 1,806,590,016-determinant symmetry-free representation.
 
 ## Exact Hamiltonian and provenance
 
@@ -45,8 +46,9 @@ input has SHA-256
 Running `scripts/oracle/validate_ccpvdz_fci.py` with
 `--fcidump-output` reproduces that file byte for byte. The script makes the
 RHF tolerance used for the input orbitals explicit; its separate
-high-precision RHF/MP2/CISD/CCSD/CCSD(T) calculation is an independent
-cross-check rather than part of the Rust production solve.
+high-precision RHF/MP2/CISD/CCSD/CCSD(T) calculation is a separately executed
+hierarchy and scale cross-check rather than part of the Rust production
+solve. It is not an independent full-CI solution of the same Hamiltonian.
 
 Dunning's cc-pVDZ definition is from J. Chem. Phys. 90, 1007 (1989),
 [DOI 10.1063/1.456153](https://doi.org/10.1063/1.456153). The water geometry
@@ -79,9 +81,9 @@ The Slurm job finished normally with exit code `0:0`. The Rust solver reported
 `converged=true`, and `6.602e-8` is below the requested residual tolerance
 `1e-7`. The final stdout and stderr are committed without editing.
 
-### 2. Independent same-input calculations
+### 2. Same-input hierarchy and scale cross-checks
 
-PySCF 2.14.0 independently gives:
+PySCF 2.14.0 was run separately on the same molecular input and gives:
 
 | Method | Total energy (Hartree) | Relation to Rust FCI |
 |---|---:|---:|
@@ -90,11 +92,13 @@ PySCF 2.14.0 independently gives:
 | CISD | −76.23129965292942 | above FCI, as required variationally |
 | CCSD | −76.23950008550794 | above FCI |
 | CCSD(T) | −76.24257144581735 | 0.647144 mHartree above FCI |
-| Rust FCI | **−76.243218589558566** | reference result |
+| Rust FCI | **−76.24321859** | reported result |
 
 The RHF value also agrees with the previously committed symmetry-free PySCF
 RHF reference to approximately `1.1e-13` Hartree. Spatial symmetry changes
 the representation of the Hamiltonian, not its RHF or ground-state energy.
+These lower-level methods establish the expected ordering and scale, but none
+is an independent FCI oracle for the 451,681,246-dimensional A1 problem.
 
 ### 3. Literature scale check and precision boundary
 
@@ -121,12 +125,30 @@ partition `xhacnormalb`, node `a02r03n08`.
 - Slurm allocated an exclusive 128-CPU node and 384 GiB.
 - The solver used one task with 64 Rayon workers and 64 fixed sigma blocks.
 - The deterministic parallel sigma workspace estimate was 215.378402 GiB.
-- The final Slurm step MaxRSS was 222.257 GiB.
+- A scheduler summary recorded a final step MaxRSS of 222.257 GiB, but the raw
+  `sacct` row is not archived and was inaccessible to the repository
+  credentials during the final audit. Treat this value as reported, not
+  independently verified accounting evidence.
 - No out-of-memory condition or nonzero exit occurred.
 
 The `Maximum resident set size` printed by `/usr/bin/time -v` in stderr
-belongs to the lightweight `srun` launcher. Slurm's step-level `MaxRSS` is the
-authoritative memory measurement for the remote worker process.
+belongs to the lightweight `srun` launcher and does not validate worker
+memory. Slurm's step-level `MaxRSS` would be the authoritative measurement,
+but the raw accounting record needed to verify the transcribed value is
+absent.
+
+## Provenance boundary
+
+The production run recorded SHA-256 hashes for its uploaded source files. The
+recorded production hash for `src/direct_fci.rs` is
+`da196f94adc819c662804bcfc5dc9a390b17ebd88a871733365ced9c1649d063`,
+whereas the archived integration source hashes to
+`47c5572c1c1a66c71820b51c3dd8df0f40e5f1795c6992791177ae5234735de7`.
+The exact production file or a reconstructing patch is not available, so this
+is a disclosed source-provenance gap rather than a byte-for-byte reproducible
+binary claim. The immutable input and unedited stdout/stderr remain
+checksum-verifiable, and the numerical result remains accepted within the
+reported `1e-7` residual tolerance.
 
 ## Scientific meaning
 
@@ -137,7 +159,7 @@ that:
 1. the Rust FCIDUMP, symmetry, determinant, sigma, and Davidson paths remain
    coherent at a 451-million-dimensional scale;
 2. deterministic parallel reduction preserves the energy scale expected from
-   independent correlated methods;
+   separately executed lower-level correlated methods;
 3. C₂ᵥ symmetry changes feasibility by reducing vector storage fourfold
    without changing the finite-basis A1 ground-state problem;
 4. the result is a reusable finite-basis benchmark, not a complete-basis,
@@ -146,16 +168,16 @@ that:
 ## Archived evidence and reproduction
 
 - `fixtures/h2o-ccpvdz-ae/FCIDUMP.c2v`: exact input.
-- `fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json`: complete machine-readable
-  result, checksums, resource record, and acceptance flags.
-- `fixtures/h2o-ccpvdz-ae/pyscf-crosscheck.json`: independent RHF through
-  CCSD(T) calculation.
+- `fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json`: machine-readable result,
+  checksums, claim boundaries, resource record, and disclosed evidence gaps.
+- `fixtures/h2o-ccpvdz-ae/pyscf-crosscheck.json`: separately executed RHF
+  through CCSD(T) hierarchy and scale checks.
 - `fixtures/h2o-ccpvdz-ae/xh5/production-23008083.out`: unedited solver output.
 - `fixtures/h2o-ccpvdz-ae/xh5/production-23008083.err`: unedited launcher and
   resource output.
 - `hpc/xh5/production.slurm`: submitted configuration.
 
-Regenerate the input and independent cross-check:
+Regenerate the input and lower-level cross-check:
 
 ```bash
 uv run --frozen python scripts/oracle/validate_ccpvdz_fci.py \
