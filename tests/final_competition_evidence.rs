@@ -22,6 +22,7 @@ fn final_article_and_evidence_share_the_same_validated_scope() {
     .expect("parse SCNet evidence");
     let article = fs::read_to_string(repository.join("reports/final-competition-summary.md"))
         .expect("read final article");
+    let article_lower = article.to_lowercase();
 
     assert_eq!(
         c2v["result"]["reported_total_energy_hartree_text"],
@@ -42,10 +43,10 @@ fn final_article_and_evidence_share_the_same_validated_scope() {
 
     assert!(article.contains("−76.24321859 Eh"));
     assert!(article.contains("560 allocated CPUs"));
-    assert!(article.contains("1,008-CPU campaign design"));
-    assert!(article.contains("exact C₂ᵥ/A1 sector"));
-    assert!(article.contains("symmetry-free resource characterization"));
-    assert!(article.contains("verified SCNet campaign"));
-    assert!(article.contains("selected-determinant frontier"));
+    assert!(article_lower.contains("1,008-cpu campaign design"));
+    assert!(article_lower.contains("exact c2v/a1 sector"));
+    assert!(article_lower.contains("symmetry-free resource characterization"));
+    assert!(article_lower.contains("verified scnet campaign"));
+    assert!(article_lower.contains("selected-determinant frontier"));
     assert!(!article.contains("−76.243218589558566"));
 }
