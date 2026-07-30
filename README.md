@@ -511,6 +511,9 @@ active interpreter rather than `.venv`.
 - [H2O/cc-pVDZ C₂ᵥ full FCI](reports/h2o-ccpvdz-c2v-fci.md) — converged
   451,681,246-determinant all-electron result, same-input PySCF cross-checks,
   Slurm provenance, and scientific interpretation.
+- [SCNet HPC benchmark](reports/scnet-hpc-benchmark.md) — offline build gate,
+  18-case Davidson robustness matrix, 216-solve repeatability evidence,
+  observed concurrency, and the fail-closed 1,008-CPU gang submission.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 
