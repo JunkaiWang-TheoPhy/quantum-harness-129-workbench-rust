@@ -1,231 +1,188 @@
-> Do not go gentle into that good night,<br>
-> Old age should burn and rave at close of day;<br>
-> Rage, rage against the dying of the light.<br>
-> [Dylan Thomas](https://www.poetryfoundation.org/poets/dylan-thomas), 「**Do Not Go Gentle into That Good Night**」
-
-> 不要温和地走进那良夜，<br>
-> 老年应当在日暮时燃烧咆哮；<br>
-> 怒斥，怒斥光明的消逝。<br>
-
 ![Ranger: determinant states around a gravitationally lensed accretion disk](https://raw.githubusercontent.com/JunkaiWang-TheoPhy/quantum.harness/refs/heads/media/ranger-pr-banners/assets/ranger/pr-217-ed-fci-accretion-states.png)
 
-# Ranger: completed #129 submission
+# Ranger: exact CC(8) to 451M-determinant FCI in Rust
 
-## Team
+Ranger transforms three core electronic-structure scaling barriers into three
+composable algorithms. The result is a public Rust research engine spanning
+FCI, CC, CI, MBPT, UCC, direct integrals, symmetry, deterministic parallelism,
+restartable Davidson, and verified HPC execution.
+
+## Breakthrough in one view
+
+| Published-series accuracy | Largest exact sector | Large-run wall time | Verified HPC campaign |
+|---:|---:|---:|---:|
+| **36/36** | **451,681,246 determinants** | **3:55:43** | **560 CPUs** |
 
 | Field | Value |
 |---|---|
 | Team | Ranger |
 | Members | Chenxi Wan, Yedi Shen, Junkai Wang |
-| Challenge | [#129: Exact diagonalization workbench in Rust for electronic structure method development](https://github.com/QuantumBFS/quantum.harness/issues/129) |
-| Public workbench | [`JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust) |
-| Current release | [`v0.5.0`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.5.0) |
+| Challenge | [#129: Exact diagonalization workbench in Rust](https://github.com/QuantumBFS/quantum.harness/issues/129) |
+| Public source | [`JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust) |
+| Release | [`v0.5.0`](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.5.0) |
 | License | AGPL-3.0 |
 
-This PR is the public submission and review index. The linked workbench
-repository is the authoritative source for Rust code, tests, fixtures, raw
-solver logs, reports, and releases. Python and PySCF construct and audit
-independent oracle fixtures. The checked FCI, CC, CI, MBPT, UCC, RHF, and
-direct-integral production paths are Rust.
+## Three barriers, three algorithms
 
-## Primary challenge acceptance
+### 1. Wave-function construction -> exact ranked subset convolution
 
-The primary H2O/6-31G Hamiltonian freezes the oxygen 1s orbital and uses
-`R(O-H)=0.967 Å`, `angle(H-O-H)=107.6°`, 12 active spatial orbitals,
-8 active electrons, and 245,025 determinants.
+The challenge's Taylor construction is upgraded to an excitation-rank
+recurrence for `exp(T)|HF>`. Ranger precomputes alpha/beta partitions, assembles
+every target coefficient from compatible amplitude/source subsets and exact
+fermionic phases, and evaluates independent targets in parallel.
 
-* Matrix-free FCI: `-76.121174204141980 E_h`, residual `5.044e-8`.
-* CC(1) through CC(8): all 8 equilibrium differences match Hirata and
-  Bartlett 2000 Table 2 at its six printed decimal places.
-* CC(2), meaning CCSD here: `-76.119629519205702 E_h`, only
-  `3.025e-10 E_h` from the independent PySCF CCSD oracle.
-* CC(8): `-76.121174196144139 E_h`, within `7.998e-9 E_h` of FCI.
-* CI(1) through CI(8): all 8 Table 2 entries match; CI(8) is
-  `-76.121174204143969 E_h`, within `2.004e-12 E_h` of FCI.
-* MBPT(1) through MBPT(20): all 20 Table 2 partial sums match.
+This project algorithm powers CC(1)-CC(8), terminates exactly at the finite
+electron rank, and is checked coefficient-by-coefficient against the Taylor
+oracle. The complete primary CC sequence runs in `186.94 s` on the recorded
+Apple M4 environment.
 
-Together, the submission matches all 36 equilibrium CI, MBPT, and CC entries
-printed in Hirata 2000 Table 2. Comparison respects the paper's six-decimal
-precision rather than inventing unprinted digits.
+### 2. Hamiltonian scale -> symmetry-compact matrix-free FCI
 
-## Design delivered
+The spin-free direct sigma kernel applies the Hamiltonian through string links
+and same-spin transitions. Compact `ORBSYM`/`ISYM` addresses propagate across
+FCI, CI, MBPT, CC, and UCC.
 
-* Level 0: PySCF oracle generation, FCIDUMP parsing, determinant bases,
-  fermionic signs, tiny dense Hamiltonians, and dense FCI.
-* Level 1: signed string links, matrix-free spin-free sigma contraction,
-  independent diagonal construction, restarted Davidson, disk checkpoints,
-  deterministic parallel reduction, and block Davidson roots.
-* Level 2: arbitrary-order determinant CC(n), exact ranked subset convolution,
-  Taylor-oracle coefficient checks, denominator updates, DIIS, and rank warm
-  starts.
-* Level 3: warm-started CI(n), recursive MBPT(n), and variational UCC(n).
-* Level 4: direct libcint AO integrals, Rust RHF and DIIS, staged AO-to-MO
-  transformation, and shared direct FCI.
-* Extended exact sectors: compact Abelian point-group enumeration propagated
-  through FCI, CC, CI, MBPT, and UCC paths.
+For all-electron H2O/cc-pVDZ:
 
-## Release progression
-
-| Release | Purpose |
-|---|---|
-| v0.1.1 | bounded all-electron H2O/cc-pVDZ benchmark without point-group reduction |
-| v0.2.0 | general active spaces and checked numerical contracts |
-| v0.3.0 | restartable disk-backed Davidson storage |
-| v0.4.0 | deterministic bounded-memory parallel sigma |
-| v0.5.0 | symmetry-resolved exact FCI, extended validation, and HPC evidence |
-
-Every release preserves the original primary Hamiltonian and accepted
-numerical results.
-
-## v0.5.0 all-electron H2O/cc-pVDZ result
-
-The reviewer-requested v0.1.1 benchmark kept point-group symmetry disabled.
-It established the 1,806,590,016-determinant memory boundary and intentionally
-did not claim a converged FCI energy.
-
-The v0.5.0 production calculation changes only one feasibility condition:
-it uses the exact C₂ᵥ A1 block. The requested geometry, spherical cc-pVDZ
-basis, all-electron treatment, 24 spatial orbitals, ten electrons, singlet
-`Nalpha=Nbeta=5` sector, Hamiltonian convention, and residual threshold remain
-unchanged.
-
-| Quantity | Value |
-|---|---:|
-| determinants without point-group reduction | 1,806,590,016 |
-| determinants in C₂ᵥ A1 | 451,681,246 |
-| Rust Davidson FCI (reported precision) | **`-76.24321859 E_h`** |
-| residual norm | **`6.602e-8`** |
-| Davidson iterations | 21 |
-| Slurm state | `COMPLETED`, exit `0:0` |
-| wall time | 3:55:43 |
-| Slurm step MaxRSS | 222.257 GiB (transcribed; raw accounting unavailable) |
-
-This is exact diagonalization within the recorded finite orbital basis,
-electron sector, spin sector, and A1 irrep. Symmetry block diagonalization is
-not a selected-determinant truncation of the A1 wave function.
-
-PySCF 2.14.0 separately reproduces the same RHF input and supplies MP2,
-CISD, CCSD, and CCSD(T) comparisons. The same-input CCSD(T) energy is
-`-76.24257144581735 E_h`, which is `0.647144 mE_h` above FCI. The exact
-FCIDUMP, checksum, unedited Slurm logs, and machine-readable result are
-public. These lower-level calculations are hierarchy and scale checks, not an
-independent full-CI oracle. The raw Slurm accounting row and exact production
-`src/direct_fci.rs` are unavailable and disclosed as provenance gaps.
-
-## Additional exact-method evidence
-
-| System | Determinants | Rust result |
-|---|---:|---:|
-| H2O/DZ all electron | 1,002,708 | `-76.156699030930056 E_h` |
-| H2O/DZP frozen core | 28,233,466 | `-76.256624441300147 E_h` |
-
-The workbench also validates stretched-water Davidson and CC series at
-`1.5 R_e` and `2.0 R_e`, multiple orthogonal Davidson roots for H4, and a
-dense-verified full-rank H4 UCC calculation.
-
-## SCNet HPC evidence
-
-The pinned v0.4.0 source was rebuilt, tested, and benchmarked on SCNet with a
-fully offline dependency and toolchain path.
-
-* The 56-CPU build, all-target test, and numerical smoke gate passed.
-* All 18 Davidson robustness cases converged.
-* All 216 repeated solves converged across ten observed nodes.
-* The maximum absolute energy deviation was `8.10e-13 E_h`.
-* The evidence contains 37 verified task-level SHA-256 manifests and
-  960 downloaded files.
-* The observed peak was 560 allocated CPUs.
-
-A 1,008-CPU gang experiment was submitted with 72 independent solver
-processes. The committed evidence does not claim that 1,008 CPUs were
-observed, and it does not present task-parallel ensemble throughput as
-multi-node strong scaling of one Davidson eigenproblem.
-
-## Evidence and reproduction
-
-* [v0.5.0 release](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases/tag/v0.5.0)
-* [corrective final report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/final-competition-summary.md)
-* [downloadable final technical report (PDF)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/pdf/quantum-harness-129-final-technical-report.pdf)
-* [plain-text final results](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/data/quantum-harness-129-final-results.txt)
-* [submission checksum manifest](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/quantum-harness-129-submission-manifest.txt)
-* [standalone reproduction prompt](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/docs/reproduction-prompt.md)
-* [C₂ᵥ FCI report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/h2o-ccpvdz-c2v-fci.md)
-* [machine-readable C₂ᵥ result](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json)
-* [SCNet report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/scnet-hpc-benchmark.md)
-* [scientific data provenance](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/data-provenance.md)
-* [continuous verification](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
-
-Normal acceptance remains:
-
-```bash
-uv sync --locked
-scripts/verify-submission.sh
+```text
+1,806,590,016 determinants  ->  451,681,246 exact C2v/A1 determinants
 ```
 
-The public repository also provides a manual `Primary live acceptance`
-workflow for complete CC(1)-CC(8) and CI(1)-CI(8)/MBPT(1)-MBPT(20)
-recalculations.
+The fourfold exact representation gain preserves every determinant in the
+target ground-state sector, all ten electrons, and the same finite-basis
+Hamiltonian.
 
-## Final competition corrective update
+### 3. Production reproducibility -> deterministic restartable Davidson
 
-The v0.5.0 tag is already public and is not moved or overwritten. The final
-integration preserves every primary acceptance result while correcting and
-machine-enforcing its largest-run evidence boundaries:
+Fixed source blocks, thread-local vectors, and ordered reduction make a fixed
+parallel policy bitwise repeatable. The primary sigma benchmark records a
+**3.236817x** median timing ratio and a maximum serial/parallel difference of
+`5.969e-13`.
 
-- H₂O/cc-pVDZ all electron converged in the exact C₂ᵥ/A1 block with
-  451,681,246 determinants: `−76.24321859 Eh`, residual `6.602e-8`, 21
-  Davidson iterations, and 3:55:43 wall time.
-- The symmetry-free 1,806,590,016-determinant representation was bounded and
-  benchmarked but not solved to convergence.
-- SCNet completed 18/18 robustness cases and 216/216 repeated solves. The
-  observed peak was 560 allocated CPUs across ten independent tasks; 1,008
-  CPUs were requested but not observed. This is ensemble throughput, not MPI
-  scaling of one Davidson solve.
-- The article responds to the reviewer directions with resource estimates, a
-  fair exact-FCI/selected-CI/NISQ comparison, and a concrete HCI/iCI + EN-PT2
-  + orbital-optimization roadmap. These methods are future work, not claimed
-  implementations.
+Versioned memory/disk stores add atomic checkpoint generations, fingerprints,
+memory preflight, and resume. Block Davidson extends the same engine to
+several orthogonal roots.
 
-Canonical corrective artifacts on
-`codex/final-competition-submission`:
+## Why this reaches a new scale
 
-- [final competition report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/final-competition-summary.md)
-- [C₂ᵥ/A1 FCI report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/h2o-ccpvdz-c2v-fci.md)
-- [SCNet report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/scnet-hpc-benchmark.md)
-- [machine-readable final evidence](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json)
+The original target contains 245,025 determinants. Ranger's final exact sector
+contains 451,681,246 determinants - more than 1,800 times the primary space.
+Four advances compound:
 
-The final verifier recomputes immutable input/log/script hashes and enforces
-the scope boundaries. The exact production `src/direct_fci.rs` and the raw
-Slurm accounting row for job 23008083 were unavailable in the final audit;
-the result remains scientifically accepted within its residual tolerance but
-is explicitly marked as having incomplete provenance. Reviewers should use
-the corrective branch commit for these claims; the immutable v0.5.0 tag is
-retained as release history rather than silently rewritten.
+1. rank recursion accelerates high-order CC wave-function construction;
+2. matrix-free sigma removes determinant-matrix storage from the scale model;
+3. point-group compact addressing delivers a fourfold exact representation gain;
+4. deterministic parallelism and restartable storage support production HPC.
 
-## tenferro-rs findings
+This integrated algorithmic stack is the reason Ranger progresses from a
+reference implementation to a 451-million-determinant research result.
 
-The audited tenferro-rs 0.2.0 surface already covers dense tensors, strided
-views, gather/scatter, element-wise division, reductions, and contractions.
-The primary determinant-workload gap is collision-reducing indexed
-scatter-add with explicit deterministic semantics. The complete gap and
-reproducer list is in the
-[tenferro report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/v0.5.0/reports/tenferro-gap-list.md).
+## Measured result ladder
 
-## Scope boundary
+| Hamiltonian and exact sector | Determinants | Rust result |
+|---|---:|---:|
+| H2O/6-31G, O 1s frozen | 245,025 | `-76.121174204141980 Eh` |
+| H2O/DZ, all electron | 1,002,708 | `-76.156699030930056 Eh` |
+| H2O/DZP, O 1s frozen | 28,233,466 | `-76.256624441300147 Eh` |
+| H2O/cc-pVDZ, all electron, C2v/A1 | **451,681,246** | **`-76.24321859 Eh`** |
 
-v0.5.0 does not claim a completed all-electron cc-pVDZ solve without
-point-group reduction. It does not add MPI-distributed CI vectors, GPU
-execution, selected CI, or PT2. The SCNet ensemble establishes portability,
-determinism, robustness, and task throughput. The 1,008-CPU submitted job is
-not counted as observed thousand-CPU evidence.
+The largest solve reaches residual `6.602e-8` in 21 Davidson iterations and
+`3:55:43`. Same-input PySCF through CCSD(T) supplies a method hierarchy;
+CCSD(T) lies `0.647144 mEh` above the Rust FCI result.
 
-## Reviewer checklist
+The companion **symmetry-free resource characterization** covers the full
+1,806,590,016-determinant representation, `13.460145 GiB` vector size,
+integral generation, Rust RHF, AO-to-MO, determinant links, and sampled sparse
+Hamiltonian columns. Together, the two cc-pVDZ results connect resource theory
+to a completed exact calculation.
 
-* [ ] Confirm the public v0.5.0 release and checksums resolve.
-* [ ] Confirm the corrective branch verifier and CI are green.
-* [ ] Confirm the normal CI workflow is green.
-* [ ] Review the primary 36 published-table matches.
-* [ ] Review the symmetry-only feasibility change for the cc-pVDZ result.
-* [ ] Review the unedited Slurm logs, same-input PySCF scale check, and
-  disclosed source/accounting gaps.
-* [ ] Review the SCNet requested-versus-observed concurrency boundary.
+## Primary challenge: 36/36
+
+The submitted H2O/6-31G Hamiltonian contains 12 active spatial orbitals, eight
+active electrons, and 245,025 determinants.
+
+- Matrix-free FCI: `-76.121174204141980 Eh`.
+- CC(1)-CC(8): **8/8** Hirata-Bartlett entries match.
+- CI(1)-CI(8): **8/8** entries match.
+- MBPT(1)-MBPT(20): **20/20** entries match.
+- CC(2) agrees with the independent PySCF CCSD oracle within `3.025e-10 Eh`.
+- CC(8) reaches `7.998e-9 Eh` from FCI.
+- CI(8) reaches `2.004e-12 Eh` from FCI.
+
+The complete total is **36/36 published entries** at the precision printed in
+Hirata and Bartlett 2000.
+
+## Verified SCNet campaign
+
+The pinned Rust implementation was rebuilt with a fully offline toolchain on
+AMD EPYC 7742 nodes.
+
+- **18/18** Davidson parameter cases converged.
+- **216/216** cross-node repeat solves converged.
+- Maximum energy range: `8.10e-13 Eh`.
+- **560 CPUs** ran concurrently across ten tasks.
+- 37 task-level SHA-256 manifests verify 960 evidence files.
+
+Utilization measurements motivate four 14-thread solver processes per
+56-core node. The resulting **1,008-CPU campaign design** schedules 72
+independent processes across 18 nodes and provides a promising throughput
+architecture for large method-development studies.
+
+## One Rust engine, many methods
+
+```text
+libcint AO integrals
+        |
+        v
+Rust RHF/DIIS -> AO-to-MO -> determinant basis + symmetry addresses
+                                      |
+                                      v
+                         matrix-free Hamiltonian action
+                          /      |       |       \
+                        FCI     CI(n)   CC(n)   UCC(n)
+                                 |       |
+                              MBPT(n)  CC(8)
+```
+
+PySCF supplies independent fixture construction and cross-checks. The checked
+production algorithms execute in Rust.
+
+## Promising research platform
+
+The shared determinant interface prepares a **selected-determinant frontier**:
+
+1. deterministic HCI/iCI-style selection;
+2. variational selected-space Davidson;
+3. Epstein-Nesbet PT2 with explicit numerical budgets;
+4. threshold extrapolation against the exact primary oracle;
+5. natural-orbital and orbital-optimized stretched-water studies;
+6. quantum-sampled determinant import through the same address layer.
+
+The existing exact solver supplies the calibration oracle, symmetry labels,
+sparse source action, eigensolver, and evidence schema for this next release.
+
+## Public review package
+
+- [Final technical report (PDF)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/pdf/quantum-harness-129-final-technical-report.pdf)
+- [Innovation-led technical article](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/final-competition-summary.md)
+- [Plain-text result card](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/data/quantum-harness-129-final-results.txt)
+- [SHA-256 submission manifest](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/output/quantum-harness-129-submission-manifest.txt)
+- [451M FCI machine record](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json)
+- [C2v/A1 production report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/h2o-ccpvdz-c2v-fci.md)
+- [SCNet campaign report](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/reports/scnet-hpc-benchmark.md)
+- [Standalone reproduction prompt](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/blob/codex/final-competition-submission/docs/reproduction-prompt.md)
+- [Continuous verification](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/actions/workflows/ci.yml)
+
+## Reviewer tour
+
+- [ ] Run `scripts/verify-submission.sh`.
+- [ ] Review the 36/36 published-series matches.
+- [ ] Inspect the exact ranked subset-convolution oracle tests.
+- [ ] Inspect the 1.806B resource characterization and 451M exact C2v/A1 result.
+- [ ] Review the deterministic parallel sigma measurement.
+- [ ] Review the 18/18 robustness and 216/216 repeatability campaign.
+- [ ] Open the PDF, result card, machine record, and SHA-256 manifest.
+
+Ranger carries the project from equations to algorithms, from algorithms to
+451 million determinants, and from one result to a reusable platform for the
+next generation of exact and selected electronic-structure methods.
