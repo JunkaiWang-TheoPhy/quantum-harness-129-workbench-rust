@@ -25,6 +25,12 @@ Hamiltonian stored in `FCIDUMP.c2v`. "Full" means that all determinants with
 the required electron number, spin projection, and A1 spatial symmetry are
 included. No active orbital or electron was removed.
 
+Compared with the earlier reviewer-requested benchmark, the only intentional
+change made to make the full solve feasible is use of the exact C₂ᵥ/A1
+symmetry block. The geometry, spherical cc-pVDZ basis, all-electron treatment,
+24 spatial orbitals, ten electrons, singlet `Nalpha=Nbeta=5` sector,
+Hamiltonian convention, and residual acceptance threshold remain unchanged.
+
 ## Exact Hamiltonian and provenance
 
 The molecular specification is:

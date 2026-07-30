@@ -172,6 +172,12 @@ independent same-geometry PySCF 2.14.0 calculation through CCSD(T), the exact
 FCIDUMP checksum, unedited Slurm logs, and the literature precision boundary
 are all committed.
 
+Relative to the reviewer-requested no-point-group-symmetry benchmark, the
+only intentional feasibility change in this new calculation is the exact
+C₂ᵥ/A1 block reduction. The requested geometry, cc-pVDZ basis, all-electron
+treatment, 24 spatial orbitals, ten electrons, singlet `Nalpha=Nbeta=5`
+sector, Hamiltonian, and convergence criterion are otherwise unchanged.
+
 ## Quick Start
 
 Build and test the Rust workbench:
