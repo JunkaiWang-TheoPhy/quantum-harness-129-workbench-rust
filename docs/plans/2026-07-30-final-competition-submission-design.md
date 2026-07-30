@@ -44,10 +44,11 @@ benchmark branch is merged into it so that scientific extensions, HPC
 orchestration, raw evidence, tests, reports, and reproduction instructions are
 addressable by one immutable commit.
 
-The stable v0.4.0 release remains the accepted baseline until the integrated
-branch passes formatting, Clippy, all non-ignored tests, the submission
-verifier, evidence hash checks, and GitHub CI. A v0.5.0 release is created only
-if those gates pass and the production provenance is made self-consistent.
+During implementation, v0.5.0 was published from the upstream integration
+work. Its tag is immutable and is not moved. The final branch therefore acts
+as a corrective evidence supplement: it merges v0.5.0, passes formatting,
+Clippy, all non-ignored tests, the submission verifier, evidence hash checks,
+and GitHub CI, and tightens claims without rewriting the release tag.
 
 ## Evidence Model
 
@@ -127,10 +128,10 @@ claimed.
 
 ## Release Rule
 
-- If every local and CI gate passes and production provenance is complete,
-  merge the final branch to `main` and create an immutable v0.5.0 release.
-- Otherwise keep v0.4.0 as Latest and publish the final branch as a clearly
-  labeled post-submission experimental extension.
+- Preserve the already published immutable v0.5.0 tag.
+- Publish this branch as a clearly labeled corrective evidence supplement;
+  merge it later only through normal review.
+- Do not create a replacement tag while production provenance is incomplete.
 - Never move or overwrite v0.1.x-v0.4.0 tags.
 
 ## Completion Criteria

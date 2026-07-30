@@ -4,7 +4,7 @@
 
 **Goal:** Produce one public, tested, evidence-complete final Quantum Harness #129 competition artifact from the solver-optimization and SCNet benchmark branches, then update PR #217 and the final technical article without overstating any result.
 
-**Architecture:** Create a dedicated integration branch from `origin/codex/challenge-129-optimizations`, merge the SCNet evidence branch, normalize the production provenance and raw Slurm evidence, and drive all public claims from tested machine-readable artifacts. Keep v0.4.0 as the stable fallback and publish v0.5.0 only after every local and remote gate passes.
+**Architecture:** Create a dedicated integration branch from `origin/codex/challenge-129-optimizations`, merge the SCNet evidence branch and the now-public immutable v0.5.0 history, normalize production-provenance disclosures, and drive all public claims from tested machine-readable artifacts. Publish the branch as a corrective evidence supplement without moving the v0.5.0 tag.
 
 **Tech Stack:** Rust 1.89, Cargo, Rayon, nalgebra, serde/serde_json, Python 3.12 with uv 0.11.32/PySCF 2.14.0, Slurm `sacct`, Git/GitHub Actions, Markdown.
 
@@ -27,6 +27,7 @@ provenance option and avoids fabricating evidence.
 - Do not claim 1,008 observed CPUs until the 72-worker/216-result fail-closed gate passes.
 - Publicly report the C2v/A1 energy as `-76.24321859 Eh` with residual `6.602e-8`.
 - Preserve all v0.1.x-v0.4.0 tags and the v0.4.0 numerical acceptance.
+- Preserve the already published immutable v0.5.0 tag; do not retag it.
 - Keep every persistent HPC file inside the authorized project directories.
 - Never delete or overwrite an existing immutable HPC run directory.
 
