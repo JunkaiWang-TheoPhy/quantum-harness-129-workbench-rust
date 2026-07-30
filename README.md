@@ -482,6 +482,8 @@ active interpreter rather than `.venv`.
   disk-backed Davidson.
 - [v0.4.0 release notes](docs/release-notes-v0.4.0.md) — deterministic,
   budgeted parallel sigma.
+- [v0.5.0 release notes](docs/release-notes-v0.5.0.md): symmetry-resolved
+  large-scale FCI, extended exact benchmarks, and audited SCNet evidence.
 - [Checkpoint format](docs/checkpoint-format.md) — schema, atomicity,
   validation, and memory planning.
 - [Incremental solver validation](reports/incremental-solver-validation.md) —

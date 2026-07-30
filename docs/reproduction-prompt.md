@@ -9,19 +9,19 @@ check is explicitly requested.
 
 - Repository:
   `https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust`
-- Validated calculation revision:
-  `c5a3aa698c26826b5feae470caea9c4b47680268`
+- Validated release:
+  `v0.5.0`
 - License: GNU Affero General Public License v3.0.
 - Primary implementation language: Rust; Python/PySCF is oracle-only.
 
-Clone the repository, check out the exact revision above, and keep
+Clone the repository, check out the exact release above, and keep
 `Cargo.lock` unchanged:
 
 ```bash
 git clone \
   https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust.git
 cd quantum-harness-129-workbench-rust
-git checkout c5a3aa698c26826b5feae470caea9c4b47680268
+git checkout v0.5.0
 cargo build --release --locked
 ```
 
@@ -118,6 +118,45 @@ Require residual norm at most `1e-7`, absolute error at most `1e-8` hartree
 against the committed PySCF FCI oracle, and agreement with the Hirata 2000
 Table 2 caption value `-76.121174` at its printed precision. Do not use the
 dense `verify` command for this 245,025-determinant space.
+
+## v0.5.0 H2O/cc-pVDZ acceptance
+
+The v0.5.0 extension uses the same requested water geometry, spherical
+cc-pVDZ basis, all ten electrons, 24 spatial orbitals, and singlet
+`Nalpha=Nbeta=5` sector as the earlier no-point-group-symmetry benchmark.
+The only intentional feasibility change is exact reduction to the C₂ᵥ A1
+block.
+
+The resulting determinant space and accepted result are:
+
+| Quantity | Value |
+|---|---:|
+| determinants without point-group reduction | 1,806,590,016 |
+| determinants in C₂ᵥ A1 | 451,681,246 |
+| Rust Davidson FCI | `-76.243218589558566 E_h` |
+| residual norm | `6.602e-8` |
+| iterations | 21 |
+| Slurm state | `COMPLETED`, exit `0:0` |
+| wall time | `3:55:43` |
+| Slurm step MaxRSS | `222.257 GiB` |
+
+The production FCIDUMP SHA-256 is:
+
+```text
+b55d1bcb04f6889e5b5dff1336412c5f7118b5bdb8461d504764f2a704cd6255
+```
+
+Run the committed evidence check:
+
+```bash
+cargo test --locked --test ccpvdz_fci_result
+```
+
+The multi-hour production solve does not need to be repeated during a normal
+audit. If the required single-node memory is available, the submitted
+configuration is preserved in `hpc/xh5/production.slurm`. The same-input
+PySCF 2.14.0 hierarchy through CCSD(T), unedited Slurm logs, exact input, and
+resource accounting are committed under `fixtures/h2o-ccpvdz-ae`.
 
 ## CC(1)-CC(8) acceptance
 
@@ -218,6 +257,15 @@ Authoritative committed evidence:
 - `reports/level3-methods.md`
 - `reports/level4-integrals.md`
 - `reports/tenferro-gap-list.md`
+- `fixtures/h2o-ccpvdz-ae/FCIDUMP.c2v`
+- `fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json`
+- `fixtures/h2o-ccpvdz-ae/pyscf-crosscheck.json`
+- `fixtures/h2o-ccpvdz-ae/xh5/production-23008083.out`
+- `fixtures/h2o-ccpvdz-ae/xh5/production-23008083.err`
+- `fixtures/hpc/scnet-2026-07-30.json`
+- `reports/h2o-ccpvdz-c2v-fci.md`
+- `reports/scnet-hpc-benchmark.md`
+- `reports/data-provenance.md`
 
 For any failure, report the checked-out commit, `rustc -V`, `cargo -V`,
 operating system, CPU, memory, `RAYON_NUM_THREADS`, FCIDUMP SHA-256, complete
@@ -226,6 +274,7 @@ residual norm, iteration count, and stderr. Distinguish a numerical mismatch
 from a mismatch caused by different geometry, basis, frozen-core choice,
 units, fixture bytes, or paper-rounding policy.
 
-The Kállay 2001 DZ/DZP calculations are extended targets and are not included
-in this validated revision. Do not describe the primary 6-31G results as
-validation of those different Hamiltonians.
+The Kállay 2001 DZ and DZP calculations are separate extended Hamiltonians
+with their own inputs, results, and precision limits. Do not describe the
+primary 6-31G results as validation of those systems, and do not describe the
+C₂ᵥ result as a completed no-point-group-symmetry calculation.
