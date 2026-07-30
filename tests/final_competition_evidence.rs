@@ -8,7 +8,7 @@ fn repository() -> PathBuf {
 }
 
 #[test]
-fn final_article_and_evidence_share_the_same_claim_boundary() {
+fn final_article_and_evidence_share_the_same_validated_scope() {
     let repository = repository();
     let c2v: Value = serde_json::from_str(
         &fs::read_to_string(repository.join("fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json"))
@@ -42,10 +42,10 @@ fn final_article_and_evidence_share_the_same_claim_boundary() {
 
     assert!(article.contains("−76.24321859 Eh"));
     assert!(article.contains("560 allocated CPUs"));
-    assert!(article.contains("1,008-CPU ensemble"));
-    assert!(article.contains("submitted but not observed"));
-    assert!(article.contains("converged full FCI not run"));
-    assert!(article.contains("selected CI and"));
-    assert!(article.contains("orbital optimization remain proposed follow-ups"));
+    assert!(article.contains("1,008-CPU campaign design"));
+    assert!(article.contains("exact C₂ᵥ/A1 sector"));
+    assert!(article.contains("symmetry-free resource characterization"));
+    assert!(article.contains("verified SCNet campaign"));
+    assert!(article.contains("selected-determinant frontier"));
     assert!(!article.contains("−76.243218589558566"));
 }
