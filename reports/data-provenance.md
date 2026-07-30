@@ -32,6 +32,7 @@ must not be attributed to a six-decimal literature table.
 | linear H₄/STO-3G | same generator; 1.0 Å adjacent spacing | PySCF records in `fixtures/h4-sto3g` | dense/direct FCI, multiroot Davidson, CC(4), UCC(4) | fermionic signs, full-rank and excited-root checks |
 | H₂O/STO-3G | same generator; 0.967 Å, 107.6° | PySCF records in `fixtures/h2o-sto3g` | direct-integral RHF/FCI | end-to-end `libcint` pipeline |
 | H₂O/6-31G frozen core | PySCF FCIDUMP; oxygen 1s frozen; checksum in `reference.json` | high-precision PySCF FCI/CCSD plus Hirata and Bartlett 2000 Table 2, [DOI 10.1016/S0009-2614(00)00387-0](https://doi.org/10.1016/S0009-2614(00)00387-0) | Davidson FCI; CC(1)-CC(8); CI(1)-CI(8); MBPT(1)-MBPT(20) | mandatory challenge Hamiltonian and published-series acceptance |
+| H₂O/6-31G frozen-core SCNet ensemble | checksum-pinned copy of the preceding FCIDUMP and v0.4.0 binary | fixed repository FCI energy plus three small-system PySCF fixtures | 18-case robustness matrix and 216 repeated Davidson solves on AMD EPYC 7742 nodes | Linux/HPC portability, determinism, tolerance sensitivity, and task-parallel throughput; not multi-node strong scaling |
 | H₂O/6-31G frozen core at 1.5 and 2.0 Rₑ | PySCF FCIDUMPs; both O–H vectors scaled, angle fixed | high-precision PySCF FCI and CCSD in the two stretched fixture directories | Davidson FCI and CC(1)-CC(8) | verifies behavior away from equilibrium; no paper value is assigned |
 | H₂O/DZ all electron | geometry and printed basis from Bauschlicher and Taylor 1986, [DOI 10.1063/1.451034](https://doi.org/10.1063/1.451034); encoded by PySCF generator | PySCF high-precision FCI; Kállay and Surján 2001 Table II six-decimal anchor, [DOI 10.1063/1.1383290](https://doi.org/10.1063/1.1383290) | 1,002,708-determinant Rust FCI | exact reproduction of a historical million-determinant target |
 | H₂O/DZP frozen core | same 1986 geometry/basis plus printed O d=1.2 and H p=0.8 polarization; oxygen 1s frozen | PySCF RHF/MP2/CCSD only; Kállay 2001 six-decimal FCI anchor | 28,233,466-determinant Rust FCI | scale extension; only six literature decimals are claimed |
@@ -80,6 +81,10 @@ must not be attributed to a six-decimal literature table.
   The recorded step `MaxRSS` was transcribed from a scheduler summary; the raw
   `sacct` row is not archived and was inaccessible during the final audit, so
   it must not be presented as independently verified accounting evidence.
+- `fixtures/hpc/scnet-2026-07-30.json` records the checksum-pinned v0.4.0
+  SCNet build gate, 18 robustness cases, 216 repeated solves, Slurm
+  accounting, and the distinction between 1,008 requested and 560 observed
+  allocated CPUs.
 
 ## Interpretation rules
 

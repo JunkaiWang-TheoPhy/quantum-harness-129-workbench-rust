@@ -45,9 +45,10 @@ Extended targets:
   documented in `reports/extended-h2o-dzp.md`.
 - Water/cc-pVDZ, all ten electrons, C₂ᵥ A1: the
   451,681,246-determinant Rust Davidson calculation converges to
-  −76.243218589558566 Hartree with residual 6.602 × 10⁻⁸. The exact input,
-  same-geometry PySCF RHF-through-CCSD(T) cross-check, Slurm logs, and
-  interpretation are documented in `reports/h2o-ccpvdz-c2v-fci.md`.
+  −76.24321859 Hartree with residual 6.602 × 10⁻⁸. The exact input,
+  same-geometry PySCF RHF-through-CCSD(T) hierarchy/scale check, Slurm logs,
+  provenance limitations, and interpretation are documented in
+  `reports/h2o-ccpvdz-c2v-fci.md`.
 - Reproduce the geometry and basis definitions from Bauschlicher 1986 rather
   than substituting similarly named modern basis-library entries without
   comparison.

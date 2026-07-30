@@ -118,7 +118,11 @@ def verify_scnet() -> None:
 def verify_public_wording() -> None:
     public_files = [
         REPOSITORY / "README.md",
+        REPOSITORY / "docs/pr-217-v0.5.0-update.md",
         REPOSITORY / "docs/reproduction-prompt.md",
+        REPOSITORY / "docs/reproducibility-notes.md",
+        REPOSITORY / "docs/release-notes-v0.5.0.md",
+        REPOSITORY / "docs/submission-pr-body.md",
         REPOSITORY / "reports/final-competition-summary.md",
         REPOSITORY / "reports/h2o-ccpvdz-c2v-fci.md",
         REPOSITORY / "reports/scnet-hpc-benchmark.md",

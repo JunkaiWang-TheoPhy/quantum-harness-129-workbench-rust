@@ -26,6 +26,12 @@ the required electron number, spin projection, and A1 spatial symmetry are
 included. No active orbital or electron was removed. It is not a completed
 solve of the 1,806,590,016-determinant symmetry-free representation.
 
+Compared with the earlier reviewer-requested benchmark, the only intentional
+change made to make the full solve feasible is use of the exact C₂ᵥ/A1
+symmetry block. The geometry, spherical cc-pVDZ basis, all-electron treatment,
+24 spatial orbitals, ten electrons, singlet `Nalpha=Nbeta=5` sector,
+Hamiltonian convention, and residual acceptance threshold remain unchanged.
+
 ## Exact Hamiltonian and provenance
 
 The molecular specification is:

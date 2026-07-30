@@ -32,6 +32,23 @@ active solution PR
 [#217](https://github.com/QuantumBFS/quantum.harness/pull/217), using the same
 head branch and solution directory.
 
+## 2026-07-30
+
+Prepared the v0.5.0 public release and PR #217 synchronization:
+
+- preserved every primary H2O/6-31G FCI, CC, CI, and MBPT acceptance result;
+- published the converged 451,681,246-determinant all-electron H2O/cc-pVDZ
+  C₂ᵥ A1 calculation;
+- recorded that symmetry reduction is the only intentional feasibility
+  change and that every other reviewer-requested condition remains unchanged;
+- archived the exact FCIDUMP, PySCF cross-check, Slurm logs, resource
+  accounting, and data provenance;
+- integrated the SCNet offline build, robustness, repeatability, and observed
+  560-CPU evidence with its explicit thousand-CPU claim boundary;
+- prepared a current PR body and a version-controlled progress comment that
+  point reviewers to the v0.5.0 release rather than the earlier v0.1.1
+  boundary.
+
 Synced useful upstream context into this repository:
 
 - Challenge metadata and deliverables in `docs/challenge-129-brief.md`.

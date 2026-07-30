@@ -207,8 +207,9 @@ Detailed artifacts are in the [C₂ᵥ/A1 report](h2o-ccpvdz-c2v-fci.md), the
 fixtures. The final audit accepts the numerical C₂ᵥ/A1 result while marking
 provenance as incomplete: the exact production `direct_fci.rs` and raw Slurm
 accounting are unavailable. Consequently this is published as a
-post-submission experimental extension on top of the stable v0.4.0 baseline,
-not as a silently rewritten release.
+corrective evidence supplement after the immutable v0.5.0 release, not as a
+silently moved or rewritten tag. Reviewers should use the corrective branch
+commit for the strictest claim wording.
 
 The submission does not claim a completed symmetry-free cc-pVDZ full FCI,
 1,008 observed CPUs, single-solve MPI scaling, selected CI, EN-PT2, natural

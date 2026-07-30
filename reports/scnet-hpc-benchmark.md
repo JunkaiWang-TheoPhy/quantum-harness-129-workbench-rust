@@ -178,11 +178,17 @@ all-electron H2O/cc-pVDZ bounded benchmark with 56 Rayon threads:
 | PySCF RHF absolute error | `6.220e-11 Eh` |
 | sparse-kernel throughput | `2.302e7 contributions/s` |
 
-The JSON explicitly records `full_fci_executed: false`.  A full all-electron
-cc-pVDZ Davidson solve was not claimed because the current in-memory algorithm
-cannot fit its required vectors within one approved node.  The bounded kernel
-is evidence for the runnable stages and the memory boundary, not a fabricated
-full-FCI result.
+The JSON explicitly records `full_fci_executed: false`.  For the pinned
+v0.4.0 no-point-group-symmetry path, a full all-electron cc-pVDZ Davidson
+solve was not claimed because its required vectors could not fit within one
+approved node.  The bounded kernel is evidence for the runnable stages and
+the memory boundary, not a fabricated full-FCI result.
+
+A later, separate calculation reduced the same Hamiltonian to its C₂ᵥ A1
+sector and converged the resulting 451,681,246-determinant FCI problem.  That
+result and its distinct Slurm provenance are documented in
+[`h2o-ccpvdz-c2v-fci.md`](h2o-ccpvdz-c2v-fci.md); it does not retroactively
+turn this no-symmetry bounded benchmark into a full-FCI run.
 
 ## Evidence and Regeneration
 
@@ -242,5 +248,5 @@ It does not prove:
 - that one Davidson solve scales across nodes;
 - that 1,008 CPUs have already been observed simultaneously;
 - that allocated CPUs equal busy CPUs;
-- that the present in-memory solver can complete all-electron
-  H2O/cc-pVDZ FCI.
+- that the pinned v0.4.0 no-point-group-symmetry path can complete
+  all-electron H2O/cc-pVDZ FCI.

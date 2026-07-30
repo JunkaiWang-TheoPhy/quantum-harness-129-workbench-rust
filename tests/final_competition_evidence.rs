@@ -37,10 +37,7 @@ fn final_article_and_evidence_share_the_same_claim_boundary() {
         c2v["reproducibility"]["exact_production_source_archived"],
         false
     );
-    assert_eq!(
-        scnet["replicate_array"]["observed_peak"]["cpus"],
-        560
-    );
+    assert_eq!(scnet["replicate_array"]["observed_peak"]["cpus"], 560);
     assert_eq!(scnet["scope"]["thousand_cpu_observed"], false);
 
     assert!(article.contains("−76.24321859 Eh"));
