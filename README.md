@@ -4,8 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust)](https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
-**28,233,466-determinant extended FCI. Arbitrary-order CC. Direct integrals.
-One Rust workbench. RIIR!**
+**451,681,246-determinant all-electron FCI. Arbitrary-order CC. Direct
+integrals. One Rust workbench. RIIR!**
 
 [Quantum Harness challenge #129](https://github.com/QuantumBFS/quantum.harness/issues/129)
 asked for an exact-diagonalization workbench in Rust for electronic-structure
@@ -29,6 +29,9 @@ RHF, and FCI.
 | Direct Davidson FCI | `-76.121174204141980 E_h` |
 | Extended H2O/DZP frozen-core space | **28,233,466 determinants** |
 | Extended H2O/DZP Davidson FCI | **−76.256624441300147 Hartree** |
+| H2O/cc-pVDZ all-electron C₂ᵥ A1 space | **451,681,246 determinants** |
+| H2O/cc-pVDZ all-electron Davidson FCI | **−76.243218589558566 Hartree** |
+| cc-pVDZ final residual / Slurm wall time | **6.602e-8 / 3:55:43** |
 | Hirata 2000 CC table | **CC(1)-CC(8): 8/8 entries matched** |
 | Hirata 2000 CI and MBPT tables | **28/28 entries matched** |
 | CC(8) distance from FCI | `7.998e-9 E_h` |
@@ -38,6 +41,8 @@ RHF, and FCI.
 All published comparisons above match the precision printed by the paper.
 Every headline result is backed by committed fixtures, machine-readable
 evidence, reproduction commands, and a dedicated report.
+The [data provenance register](reports/data-provenance.md) distinguishes
+paper transcriptions, PySCF oracles, Rust results, and hardware measurements.
 
 ## This Is Not a Wrapper
 
@@ -103,8 +108,10 @@ cargo run --release --locked -- davidson \
 ```
 
 Disk backing reduces Davidson subspace residency; it does not eliminate the
-requirement that several full vectors fit in memory. It is not a claim of
-converged H2O/cc-pVDZ all-electron full FCI. See the
+requirement that several full vectors fit in memory. This feature by itself
+was not a claim of converged H2O/cc-pVDZ all-electron FCI; the later
+symmetry-adapted 451,681,246-determinant Slurm calculation is documented
+separately. See the
 [v0.3.0 release notes](docs/release-notes-v0.3.0.md) and
 [checkpoint format](docs/checkpoint-format.md).
 
@@ -155,6 +162,15 @@ Rust converges the 28,233,466-determinant sector to
 six decimals printed by Kállay 2001. No primary 6-31G result is presented as
 evidence for a different Hamiltonian. RIIR means rewriting the
 implementation—not rewriting the scientific claim.
+
+The all-electron H2O/cc-pVDZ extension is also complete in the C₂ᵥ ground-state
+A1 sector. Spatial symmetry reduces the fixed-`Nalpha=Nbeta=5` space from
+1,806,590,016 to 451,681,246 determinants without freezing electrons or
+orbitals. Slurm job `23008083` converged to
+`-76.243218589558566` Hartree with residual `6.602e-8` in 3:55:43. An
+independent same-geometry PySCF 2.14.0 calculation through CCSD(T), the exact
+FCIDUMP checksum, unedited Slurm logs, and the literature precision boundary
+are all committed.
 
 ## Quick Start
 
@@ -446,6 +462,9 @@ active interpreter rather than `.venv`.
   issue, PR, dependency, and documentation metadata.
 - [Reproducibility notes](docs/reproducibility-notes.md) — conventions, APIs,
   targets, tolerances, and provenance rules.
+- [Scientific data provenance](reports/data-provenance.md) — source class,
+  Hamiltonian, oracle, literature, Rust output, and interpretation boundaries
+  for every main dataset.
 - [Standalone reproduction prompt](docs/reproduction-prompt.md) — exact
   revision, checksums, commands, tolerances, expected tables, and failure
   reporting.
@@ -487,8 +506,11 @@ active interpreter rather than `.venv`.
 - [Multi-root Davidson and UCC report](reports/multiroot-and-ucc.md) —
   dense-verified H₄ excited roots and a full-rank 35-parameter UCC check.
 - [H2O/cc-pVDZ benchmark](reports/h2o-ccpvdz-all-electron-benchmark.md) —
-  bounded all-electron timings, memory measurements, and the explicit
-  full-space scalability boundary.
+  bounded no-point-group-symmetry timings, memory measurements, and the
+  explicit full-space scalability boundary.
+- [H2O/cc-pVDZ C₂ᵥ full FCI](reports/h2o-ccpvdz-c2v-fci.md) — converged
+  451,681,246-determinant all-electron result, same-input PySCF cross-checks,
+  Slurm provenance, and scientific interpretation.
 - [tenferro gap list](reports/tenferro-gap-list.md) — current API coverage and
   proposed upstreamable reproducer work.
 

@@ -402,12 +402,19 @@ impl DirectFciOperator {
                 partial
             })
             .collect();
-        output.fill(0.0);
-        for partial in partials {
-            for (destination, contribution) in output.iter_mut().zip(partial) {
-                *destination += contribution;
-            }
-        }
+        const REDUCTION_CHUNK: usize = 1 << 16;
+        output.par_chunks_mut(REDUCTION_CHUNK).enumerate().for_each(
+            |(chunk_index, output_chunk)| {
+                let start = chunk_index * REDUCTION_CHUNK;
+                let end = start + output_chunk.len();
+                output_chunk.fill(0.0);
+                for partial in &partials {
+                    for (value, contribution) in output_chunk.iter_mut().zip(&partial[start..end]) {
+                        *value += *contribution;
+                    }
+                }
+            },
+        );
     }
 }
 

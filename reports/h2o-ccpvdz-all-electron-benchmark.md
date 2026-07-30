@@ -166,3 +166,17 @@ Hamiltonian kernel. A converged no-symmetry full-FCI calculation would require
 a blocked, out-of-core, or distributed Davidson/vector design. Implementing
 that solver is separate work; the present report does not extrapolate the
 sparse-column timing into a false full-FCI wall time.
+
+## Symmetry-adapted follow-up
+
+On 2026-07-30, a separate C₂ᵥ A1 calculation converged the all-electron
+cc-pVDZ FCI energy in a 451,681,246-determinant block. That result does not
+retroactively turn the bounded benchmark above into a no-symmetry full solve:
+the 1,806,590,016-determinant no-point-group space was not allocated.
+
+The follow-up preserves all ten electrons and all 24 spatial orbitals. It uses
+the exact block diagonalization allowed by point-group symmetry and is
+documented in
+[`h2o-ccpvdz-c2v-fci.md`](h2o-ccpvdz-c2v-fci.md), with its FCIDUMP,
+same-input PySCF cross-check, machine-readable result, and unedited Slurm logs
+under `fixtures/h2o-ccpvdz-ae`.

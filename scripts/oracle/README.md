@@ -101,3 +101,23 @@ The review benchmark reference is deliberately RHF-only:
 It uses all 10 electrons, 24 cc-pVDZ spatial orbitals, `symmetry=False`, and
 records the fixed-`Nalpha=Nbeta=5` determinant dimension. It does not create
 FCIDUMP, run FCI, CCSD, or MP2, or allocate a full CI vector.
+
+The later symmetry-adapted production calculation has a separate, explicit
+cross-check:
+
+```bash
+uv run --frozen python scripts/oracle/validate_ccpvdz_fci.py \
+  --threads 1 \
+  --output /tmp/pyscf-crosscheck.json \
+  --fcidump-output /tmp/FCIDUMP.c2v
+
+shasum -a 256 /tmp/FCIDUMP.c2v
+```
+
+The expected FCIDUMP SHA-256 is
+`b55d1bcb04f6889e5b5dff1336412c5f7118b5bdb8461d504764f2a704cd6255`.
+The script uses the exact 0.967 Å, 107.6° geometry, all ten electrons,
+cc-pVDZ spherical functions, C₂ᵥ symmetry, and one-based Molpro orbital
+labels. It also computes high-precision RHF, MP2, CISD, CCSD, and CCSD(T)
+values for an independent energy-hierarchy check. It intentionally does not
+start PySCF FCI.
