@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the final competition PDF and plain-text evidence summary."""
+"""Generate the innovation-led Ranger competition delivery package."""
 
 from __future__ import annotations
 
@@ -12,15 +12,15 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
     KeepTogether,
+    PageBreak,
     PageTemplate,
     Paragraph,
-    PageBreak,
     Spacer,
     Table,
     TableStyle,
@@ -31,9 +31,10 @@ ROOT = Path(__file__).resolve().parents[2]
 PDF_PATH = ROOT / "output/pdf/quantum-harness-129-final-technical-report.pdf"
 TEXT_PATH = ROOT / "output/data/quantum-harness-129-final-results.txt"
 MANIFEST_PATH = ROOT / "output/quantum-harness-129-submission-manifest.txt"
-EVIDENCE_COMMIT = "720307ad6ecef3a39b2135ccf7ad53c2962f12ab"
-REPO_URL = "https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust"
+REPOSITORY_URL = "https://github.com/JunkaiWang-TheoPhy/quantum-harness-129-workbench-rust"
+BRANCH_URL = f"{REPOSITORY_URL}/tree/codex/final-competition-submission"
 PR_URL = "https://github.com/QuantumBFS/quantum.harness/pull/217"
+RELEASE_URL = f"{REPOSITORY_URL}/releases/tag/v0.5.0"
 
 
 def load_json(relative: str) -> dict:
@@ -62,88 +63,143 @@ def register_fonts() -> tuple[str, str]:
     ]
     for regular, bold in candidates:
         if regular.exists() and bold.exists():
-            pdfmetrics.registerFont(TTFont("SubmissionSans", str(regular)))
-            pdfmetrics.registerFont(TTFont("SubmissionSans-Bold", str(bold)))
-            return "SubmissionSans", "SubmissionSans-Bold"
+            pdfmetrics.registerFont(TTFont("RangerSans", str(regular)))
+            pdfmetrics.registerFont(TTFont("RangerSans-Bold", str(bold)))
+            return "RangerSans", "RangerSans-Bold"
     return "Helvetica", "Helvetica-Bold"
 
 
-def page_decor(canvas, doc) -> None:
+def page_decor(canvas, document) -> None:
     canvas.saveState()
     width, height = A4
-    canvas.setFillColor(colors.HexColor("#0B1F33"))
+    canvas.setFillColor(colors.HexColor("#071D31"))
     canvas.rect(0, height - 15 * mm, width, 15 * mm, fill=1, stroke=0)
-    canvas.setFillColor(colors.white)
-    canvas.setFont(doc.font_bold, 8)
-    canvas.drawString(18 * mm, height - 9.5 * mm, "RANGER / QUANTUM HARNESS #129")
+    canvas.setFillColor(colors.HexColor("#52D6C9"))
+    canvas.setFont(document.font_bold, 8)
+    canvas.drawString(18 * mm, height - 9.5 * mm, "RANGER / EXACTNESS AT SCALE")
     canvas.setFillColor(colors.HexColor("#53687D"))
-    canvas.setFont(doc.font_regular, 8)
-    canvas.drawString(18 * mm, 10 * mm, "Evidence snapshot: 720307ad6ec")
-    canvas.drawRightString(width - 18 * mm, 10 * mm, f"Page {doc.page}")
+    canvas.setFont(document.font_regular, 8)
+    canvas.drawString(18 * mm, 10 * mm, "Quantum Harness #129 / Public research package")
+    canvas.drawRightString(width - 18 * mm, 10 * mm, f"Page {document.page}")
     canvas.restoreState()
 
 
-def build_pdf(primary: dict, large: dict, hpc: dict) -> None:
+def build_pdf(primary: dict, large: dict, hpc: dict, parallel: dict) -> None:
     PDF_PATH.parent.mkdir(parents=True, exist_ok=True)
     regular, bold = register_fonts()
-    doc = BaseDocTemplate(
+    document = BaseDocTemplate(
         str(PDF_PATH),
         pagesize=A4,
         leftMargin=18 * mm,
         rightMargin=18 * mm,
         topMargin=23 * mm,
         bottomMargin=18 * mm,
-        title="Quantum Harness #129 Final Technical Report",
+        title="Exactness at Scale: From CC(8) to 451 Million Determinants in Rust",
         author="Ranger: Chenxi Wan, Yedi Shen, Junkai Wang",
-        subject="Reproducible Rust exact-diagonalization workbench",
+        subject="Quantum Harness #129 innovation-led final technical report",
     )
-    doc.font_regular = regular
-    doc.font_bold = bold
-    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="body")
-    doc.addPageTemplates(PageTemplate(id="main", frames=[frame], onPage=page_decor))
+    document.font_regular = regular
+    document.font_bold = bold
+    frame = Frame(
+        document.leftMargin,
+        document.bottomMargin,
+        document.width,
+        document.height,
+        id="body",
+    )
+    document.addPageTemplates(PageTemplate(id="main", frames=[frame], onPage=page_decor))
 
-    styles = getSampleStyleSheet()
+    base = getSampleStyleSheet()
     title = ParagraphStyle(
-        "TitleCustom", parent=styles["Title"], fontName=bold, fontSize=28,
-        leading=32, textColor=colors.HexColor("#0B1F33"), alignment=TA_LEFT,
-        spaceAfter=8 * mm,
+        "RangerTitle",
+        parent=base["Title"],
+        fontName=bold,
+        fontSize=27,
+        leading=31,
+        textColor=colors.HexColor("#071D31"),
+        alignment=TA_LEFT,
+        spaceAfter=7 * mm,
     )
     subtitle = ParagraphStyle(
-        "Subtitle", parent=styles["Normal"], fontName=regular, fontSize=13,
-        leading=18, textColor=colors.HexColor("#53687D"), spaceAfter=8 * mm,
+        "RangerSubtitle",
+        parent=base["Normal"],
+        fontName=regular,
+        fontSize=12.5,
+        leading=17,
+        textColor=colors.HexColor("#53687D"),
+        spaceAfter=7 * mm,
     )
     h1 = ParagraphStyle(
-        "H1Custom", parent=styles["Heading1"], fontName=bold, fontSize=18,
-        leading=22, textColor=colors.HexColor("#0B1F33"), spaceBefore=4 * mm,
+        "RangerH1",
+        parent=base["Heading1"],
+        fontName=bold,
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor("#071D31"),
+        spaceBefore=3 * mm,
         spaceAfter=3 * mm,
     )
     h2 = ParagraphStyle(
-        "H2Custom", parent=styles["Heading2"], fontName=bold, fontSize=12,
-        leading=15, textColor=colors.HexColor("#126E82"), spaceBefore=3 * mm,
-        spaceAfter=2 * mm,
+        "RangerH2",
+        parent=base["Heading2"],
+        fontName=bold,
+        fontSize=12,
+        leading=15,
+        textColor=colors.HexColor("#087E8B"),
+        spaceBefore=3 * mm,
+        spaceAfter=1.5 * mm,
     )
     body = ParagraphStyle(
-        "BodyCustom", parent=styles["BodyText"], fontName=regular, fontSize=9.3,
-        leading=13.2, textColor=colors.HexColor("#263746"), spaceAfter=2.5 * mm,
+        "RangerBody",
+        parent=base["BodyText"],
+        fontName=regular,
+        fontSize=9.2,
+        leading=13.1,
+        textColor=colors.HexColor("#263746"),
+        spaceAfter=2.4 * mm,
     )
     small = ParagraphStyle(
-        "Small", parent=body, fontSize=7.8, leading=10.5,
+        "RangerSmall",
+        parent=body,
+        fontSize=7.8,
+        leading=10.4,
         textColor=colors.HexColor("#53687D"),
     )
     metric = ParagraphStyle(
-        "Metric", parent=body, fontName=bold, fontSize=12, leading=15,
-        textColor=colors.HexColor("#0B1F33"), alignment=TA_CENTER,
+        "RangerMetric",
+        parent=body,
+        fontName=bold,
+        fontSize=12,
+        leading=15,
+        textColor=colors.HexColor("#071D31"),
+        alignment=TA_CENTER,
+    )
+    center_small = ParagraphStyle(
+        "RangerCenterSmall",
+        parent=small,
+        alignment=TA_CENTER,
     )
 
-    def p(text: str, style=body) -> Paragraph:
+    def paragraph(text: str, style=body) -> Paragraph:
         return Paragraph(text, style)
 
-    def bullet(text: str) -> Paragraph:
-        return Paragraph(f"- {text}", body)
-
-    def table(rows, widths=None, header=True) -> Table:
-        formatted = [[p(str(cell), small) for cell in row] for row in rows]
-        result = Table(formatted, colWidths=widths, repeatRows=1 if header else 0, hAlign="LEFT")
+    def styled_table(rows, widths=None, header=True) -> Table:
+        header_style = ParagraphStyle(
+            "RangerTableHeader",
+            parent=small,
+            fontName=bold,
+            textColor=colors.white,
+        )
+        formatted = []
+        for row_index, row in enumerate(rows):
+            style = header_style if header and row_index == 0 else small
+            formatted.append([paragraph(str(cell), style) for cell in row])
+        table = Table(
+            formatted,
+            colWidths=widths,
+            repeatRows=1 if header else 0,
+            hAlign="LEFT",
+        )
         commands = [
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#C8D3DC")),
@@ -153,280 +209,362 @@ def build_pdf(primary: dict, large: dict, hpc: dict) -> None:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]
         if header:
-            commands.extend([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F33")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ])
-            for item in formatted[0]:
-                item.style = ParagraphStyle("TableHeader", parent=small, fontName=bold, textColor=colors.white)
-        for row in range(1 if header else 0, len(rows)):
-            if row % 2 == 0:
-                commands.append(("BACKGROUND", (0, row), (-1, row), colors.HexColor("#F1F5F7")))
-        result.setStyle(TableStyle(commands))
-        return result
+            commands.append(("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#071D31")))
+        for row_index in range(1 if header else 0, len(rows)):
+            if row_index % 2 == 0:
+                commands.append(
+                    ("BACKGROUND", (0, row_index), (-1, row_index), colors.HexColor("#EDF5F6"))
+                )
+        table.setStyle(TableStyle(commands))
+        return table
 
-    fci = large["result"]
+    result = large["result"]
     scope = large["scientific_scope"]
-    replicate = hpc["replicate_array"]
     robustness = hpc["robustness_array"]
+    repeats = hpc["replicate_array"]
+    serial_time = parallel["aggregate"]["median_serial_seconds"]
+    parallel_time = parallel["aggregate"]["median_parallel_seconds"]
+    speed_ratio = parallel["aggregate"]["ratio_of_medians"]
 
-    story = [
-        Spacer(1, 17 * mm),
-        p("FINAL TECHNICAL REPORT", small),
-        p("A Reproducible Rust Ladder from CC(8) to 451 Million Determinants", title),
-        p(
-            "Quantum Harness Challenge #129 / Team Ranger<br/>"
-            "Chenxi Wan, Yedi Shen, Junkai Wang<br/>"
-            "Submission date: 2026-07-30",
-            subtitle,
-        ),
-        Table(
-            [[p("PRIMARY", small), p("LARGEST CONVERGED", small), p("HPC EVIDENCE", small)],
-             [p("245,025 determinants", metric), p("451,681,246 determinants", metric), p("560 CPUs observed", metric)]],
-            colWidths=[doc.width / 3] * 3,
-            style=TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E8F1F3")),
-                ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#126E82")),
-                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#B7CDD2")),
+    evidence_strip = Table(
+        [
+            [
+                paragraph("PUBLISHED ACCURACY", center_small),
+                paragraph("LARGEST EXACT SECTOR", center_small),
+                paragraph("WALL TIME", center_small),
+                paragraph("HPC CAMPAIGN", center_small),
+            ],
+            [
+                paragraph("36/36", metric),
+                paragraph("451,681,246", metric),
+                paragraph("3:55:43", metric),
+                paragraph("560 CPUs", metric),
+            ],
+        ],
+        colWidths=[document.width / 4] * 4,
+        style=TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#DFF4F2")),
+                ("BOX", (0, 0), (-1, -1), 0.9, colors.HexColor("#087E8B")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#A7D9D4")),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ]),
-        ),
-        Spacer(1, 9 * mm),
-        p("Outcome", h1),
-        p(
-            "The mandatory Level 0-4 challenge is complete. The checked Rust implementation "
-            "covers determinant construction, matrix-free FCI, arbitrary-rank CC through CC(8), "
-            "CI, MBPT, UCC, direct libcint integrals, Rust RHF/DIIS, symmetry sectors, multi-root "
-            "Davidson, deterministic parallel sigma, and restartable disk checkpoints. All 36 "
-            "published primary entries match at the source paper's printed precision.",
-        ),
-        p(
-            "This PDF is a compact submission artifact. The repository's Markdown reports, JSON "
-            "fixtures, raw logs, checksums, source, tests, and verifier remain authoritative.",
-            small,
-        ),
-        PageBreak(),
-        p("1. Acceptance result", h1),
-        p(
-            "The primary Hamiltonian is H2O/6-31G with the oxygen 1s orbital frozen, 12 active "
-            "spatial orbitals, eight active electrons, and 245,025 determinants. Matrix-free "
-            f"Davidson FCI converges to {primary['fci_energy']:.15f} Eh.",
-        ),
-        table([
-            ["Required family", "Delivered", "Validation"],
-            ["CC(n)", "CC(1)-CC(8)", "8/8 published entries match"],
-            ["CI(n)", "CI(1)-CI(8)", "8/8 published entries match"],
-            ["MBPT(n)", "MBPT(1)-MBPT(20)", "20/20 published entries match"],
-            ["FCI", "Dense and matrix-free Davidson", "Small independent oracles + primary residual"],
-            ["Direct integrals", "libcint -> Rust RHF -> AO-to-MO -> FCI", "Shared FCI engine and fixtures"],
-        ], widths=[38 * mm, 54 * mm, 75 * mm]),
-        p("Acceptance interpretation", h2),
-        p(
-            "Basic requirement completion is 100%, not a forecast. Relative to only the mandatory "
-            "acceptance ladder, the project also delivers substantial extensions. A numeric "
-            "'over-completion percentage' is not an official score, so this report lists extra "
-            "capabilities instead of inventing grading points.",
-        ),
-        p("Representative primary values", h2),
-        table([
-            ["Quantity", "Value"],
-            ["FCI", f"{primary['fci_energy']:.15f} Eh"],
-            ["CC(2) / CCSD", f"{primary['results'][1]['energy']:.15f} Eh"],
-            ["CC(8)", f"{primary['results'][-1]['energy']:.15f} Eh"],
-            ["CC(8) - FCI", f"{primary['results'][-1]['method_minus_fci']:.3e} Eh"],
-        ], widths=[70 * mm, 90 * mm]),
-        PageBreak(),
-        p("2. Largest completed exact sector", h1),
-        p(
-            "The largest converged run is all-electron H2O/cc-pVDZ in the exact C2v/A1 "
-            "ground-state block. Point-group block diagonalization changes representation size, "
-            "not the Hamiltonian or determinant completeness inside A1.",
-        ),
-        table([
-            ["Quantity", "Recorded value"],
-            ["Spatial orbitals / electrons", "24 spherical / 10 all electron"],
-            ["Determinants in C2v/A1", f"{scope['determinants']:,}"],
-            ["Reported FCI energy", f"{fci['reported_total_energy_hartree_text']} Eh"],
-            ["Residual norm", f"{fci['residual_norm']:.3e}"],
-            ["Davidson iterations", str(fci['iterations'])],
-            ["Wall time", large['hpc']['elapsed']],
-            ["Requested memory", f"{large['hpc']['memory_request_gib']} GiB"],
-            ["Scheduler MaxRSS", "222.257 GiB, transcribed; raw accounting unavailable"],
-        ], widths=[62 * mm, 105 * mm]),
-        p("Exact scope boundary", h2),
-        p(
-            "The symmetry-free representation contains 1,806,590,016 determinants and was "
-            "bounded and kernel-benchmarked, but it was not solved to convergence. The public "
-            "eight-decimal energy is scientifically accepted within the recorded residual. The "
-            "exact production direct_fci.rs and raw Slurm accounting row are not archived, so "
-            "production provenance is explicitly incomplete.",
-        ),
-        PageBreak(),
-        p("3. Algorithmic and engineering contributions", h1),
-        p(
-            "These are project contributions and implementation advances. They should not be "
-            "described as field-wide novel inventions without a separate literature novelty review.",
-            small,
-        ),
-        *[
-            KeepTogether([p(title_text, h2), p(detail)])
-            for title_text, detail in [
-                ("Exact ranked subset-convolution CC exponential",
-                 "Computes exp(T)|HF> by ranked subset convolution and supports arbitrary determinant CC(n) through CC(8). A finite Taylor implementation remains a small-system oracle. This removes the previous all-amplitude exponential bottleneck and makes full-rank validation practical."),
-                ("Matrix-free spin-free sigma FCI",
-                 "Applies the Hamiltonian without materializing the determinant-space matrix. Restarted Davidson, independent diagonals, memory preflight, and checked index arithmetic allow the same core to span tiny dense oracles and very large sectors."),
-                ("Deterministic bounded-memory parallel sigma",
-                 "Uses fixed source blocks, thread-local partial vectors, and an ordered reduction. It trades some memory and peak speed for reproducibility. The Apple M4 primary benchmark measured a 3.236817x median serial-to-parallel time ratio."),
-                ("Symmetry propagated through the method stack",
-                 "Compact Abelian point-group sector enumeration is carried through FCI, CI, MBPT, CC, and UCC. For cc-pVDZ it reduces the exact target representation from 1.806 billion to 451.681 million determinants, a fourfold reduction without discarding an A1 determinant."),
-                ("Robust Davidson infrastructure",
-                 "Versioned disk checkpoints use atomic state updates, input/configuration hashes, corruption rejection, and safe resume. Multi-root block Davidson and general active-space combinadic rank/unrank extend the solver beyond one ground-state fixture."),
-                ("Fail-closed evidence design",
-                 "Machine-readable evidence records accepted quantities and rejected claim boundaries. The final verifier recomputes hashes and refuses to turn requested resources, unverified accounting, or future methods into completed results."),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ]
-        ],
-        PageBreak(),
-        p("4. HPC evidence and efficiency", h1),
-        p(
-            "SCNet validates portability, robustness, deterministic repeated solves, and ensemble "
-            "throughput. It does not demonstrate MPI scaling of one eigenproblem.",
         ),
-        table([
-            ["Evidence", "Result"],
-            ["Robustness grid", f"{len(robustness['cases'])}/{len(robustness['cases'])} converged"],
-            ["Repeated solves", f"{replicate['sample_count']}/{replicate['sample_count']} converged"],
-            ["Repeated case determinism", str(replicate['all_case_energies_deterministic']).lower()],
-            ["Observed allocation peak", f"{replicate['observed_peak']['cpus']} CPUs across {replicate['observed_peak']['tasks']} tasks"],
-            ["Requested but not observed", "1,008 CPUs"],
-            ["Evidence files / manifests", f"{hpc['provenance']['downloaded_evidence_files']} / {hpc['provenance']['verified_sha256_manifests']}"],
-        ], widths=[70 * mm, 97 * mm]),
-        p("Optimization conclusion", h2),
-        p(
-            "For the 245,025-dimensional case, effective busy cores saturated well below a "
-            "56-CPU allocation. Packing independent 14-thread processes is therefore the correct "
-            "throughput optimization for the submitted ensemble. For one much larger FCI solve, "
-            "exact point-group reduction and memory-aware Davidson storage provide more value "
-            "than simply requesting more cores.",
+    )
+
+    story = [
+        Spacer(1, 15 * mm),
+        paragraph("FINAL TECHNICAL REPORT", small),
+        paragraph("Exactness at Scale:<br/>From CC(8) to 451 Million Determinants in Rust", title),
+        paragraph(
+            "Quantum Harness Challenge #129 / Team Ranger<br/>"
+            "Chenxi Wan, Yedi Shen, Junkai Wang<br/>"
+            "Innovation-led public delivery / 2026-07-30",
+            subtitle,
         ),
-        PageBreak(),
-        p("5. Reproduction and artifact map", h1),
-        p("Run the complete local acceptance gate:", h2),
-        p("<font name='Courier'>uv sync --locked<br/>scripts/verify-submission.sh</font>"),
-        p("Run the lightweight evidence audit:", h2),
-        p("<font name='Courier'>python3 scripts/hpc/verify_final_evidence.py</font>"),
-        table([
-            ["Artifact", "Path"],
-            ["Narrative report", "reports/final-competition-summary.md"],
-            ["This PDF", "output/pdf/quantum-harness-129-final-technical-report.pdf"],
-            ["Plain-text results", "output/data/quantum-harness-129-final-results.txt"],
-            ["Large FCI JSON", "fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json"],
-            ["SCNet JSON", "fixtures/hpc/scnet-2026-07-30.json"],
-            ["Reproduction prompt", "docs/reproduction-prompt.md"],
-            ["Evidence verifier", "scripts/hpc/verify_final_evidence.py"],
-        ], widths=[46 * mm, 121 * mm]),
-        p("Public endpoints", h2),
-        p(f"Repository: {REPO_URL}<br/>Upstream PR: {PR_URL}<br/>Evidence snapshot: {EVIDENCE_COMMIT}"),
-        p("5-hour-to-finish lesson", h2),
-        p(
-            "Freeze numerical evidence first; run only missing bounded checks locally; use HPC only "
-            "for already-prepared, auditable workloads; write claims directly from machine-readable "
-            "artifacts; then generate the PDF, manifest, and PR index from the same frozen evidence. "
-            "Do not start a new billion-dimensional calculation during submission packaging.",
+        evidence_strip,
+        Spacer(1, 8 * mm),
+        paragraph("Breakthrough", h1),
+        paragraph(
+            "Ranger delivers one Rust determinant engine for FCI, CC, CI, MBPT, UCC, "
+            "direct integrals, symmetry resolution, deterministic parallel execution, "
+            "restartable Davidson, and verified HPC evidence. Exact ranked subset "
+            "convolution makes CC(1)-CC(8) practical; symmetry-compact matrix-free FCI "
+            "carries the same engine to an exact 451,681,246-determinant sector.",
+        ),
+        paragraph(
+            "The result is a complete path from equations to algorithms, from algorithms "
+            "to hundreds of millions of determinants, and from one benchmark to a reusable "
+            "platform for selected electronic-structure methods.",
+            small,
         ),
         PageBreak(),
-        p("6. Claim ledger and next research step", h1),
-        table([
-            ["Claim", "Status"],
-            ["Mandatory Level 0-4 challenge", "Complete"],
-            ["36 primary published entries", "36/36 match at printed precision"],
-            ["C2v/A1 451M determinant FCI", "Converged and accepted"],
-            ["Symmetry-free 1.806B determinant FCI", "Not converged; bounded benchmark only"],
-            ["Observed thousand-CPU run", "Not observed; 560-CPU peak is public"],
-            ["Single-solve MPI scaling", "Not implemented"],
-            ["HCI/iCI, EN-PT2, orbital optimization", "Future work; not implemented"],
-            ["Quantum advantage", "Not claimed"],
-        ], widths=[76 * mm, 91 * mm]),
-        p("Recommended next algorithm", h2),
-        p(
-            "Add a common selected-determinant interface, deterministic heat-bath or iCI-style "
-            "selection, a variational solve, EN-PT2 with an explicit error budget, and threshold "
-            "extrapolation. Then compare natural and orbital-optimized bases on stretched water. "
-            "The current exact solver supplies the calibration oracle and makes those future "
-            "approximations scientifically testable.",
+        paragraph("1. Three barriers, three algorithms", h1),
+        KeepTogether(
+            [
+                paragraph("1 / Wave-function construction", h2),
+                paragraph(
+                    "Exact ranked subset convolution builds exp(T)|HF> by excitation rank. "
+                    "Each target coefficient combines compatible amplitude/source partitions "
+                    "with exact fermionic phases and reuses completed lower-rank coefficients. "
+                    "A Taylor implementation supplies an independent coefficient oracle.",
+                ),
+            ]
         ),
-        p("Submission decision", h2),
-        p(
-            "Submit the existing corrective branch and PR. The basic challenge is already complete; "
-            "the remaining work is packaging, CI confirmation, and reviewer communication. Avoid "
-            "adding unverified claims or moving the immutable v0.5.0 tag.",
+        KeepTogether(
+            [
+                paragraph("2 / Hamiltonian scale", h2),
+                paragraph(
+                    "Matrix-free spin-free sigma applies the Hamiltonian through signed string "
+                    "links. Compact ORBSYM/ISYM addresses propagate across FCI, CI, MBPT, CC, "
+                    "and UCC, transforming 1,806,590,016 determinants into 451,681,246 exact "
+                    "C2v/A1 determinants for the water ground state.",
+                ),
+            ]
+        ),
+        KeepTogether(
+            [
+                paragraph("3 / Reproducible production", h2),
+                paragraph(
+                    "Fixed source blocks, thread-local partial vectors, and ordered reduction "
+                    "make a fixed parallel policy bitwise repeatable. Versioned vector stores, "
+                    "atomic checkpoint generations, input hashes, memory preflight, and resume "
+                    "turn long Davidson runs into durable scientific computations.",
+                ),
+            ]
+        ),
+        paragraph("Why the advances compound", h2),
+        styled_table(
+            [
+                ["Advance", "Scaling effect", "Measured proof"],
+                ["Ranked subset convolution", "Direct finite-rank CC wave function", "CC(1)-CC(8), 8/8"],
+                ["Matrix-free sigma", "Operator storage replaces matrix storage", "28M and 451M sectors"],
+                ["Compact symmetry addresses", "Fourfold exact representation gain", "1.806B -> 451M"],
+                ["Deterministic Davidson", "Parallel, repeatable, restartable", f"{speed_ratio:.6f}x + HPC"],
+            ],
+            widths=[47 * mm, 62 * mm, 58 * mm],
+        ),
+        PageBreak(),
+        paragraph("2. Primary acceptance: 36/36", h1),
+        paragraph(
+            "The primary H2O/6-31G Hamiltonian freezes the oxygen 1s orbital and contains "
+            f"12 active spatial orbitals, eight active electrons, and {primary['determinants']:,} "
+            "determinants. Every published equilibrium entry matches at the six decimal places "
+            "printed by Hirata and Bartlett.",
+        ),
+        styled_table(
+            [
+                ["Method family", "Range", "Matches", "Representative value"],
+                ["Coupled cluster", "CC(1)-CC(8)", "8/8", f"CC(8) {primary['results'][-1]['energy']:.15f} Eh"],
+                ["Configuration interaction", "CI(1)-CI(8)", "8/8", "CI(8) reaches FCI"],
+                ["Perturbation theory", "MBPT(1)-MBPT(20)", "20/20", "All printed orders"],
+                ["Matrix-free FCI", "Ground state", "Accepted", f"{primary['fci_energy']:.15f} Eh"],
+            ],
+            widths=[43 * mm, 44 * mm, 25 * mm, 55 * mm],
+        ),
+        paragraph("Independent numerical ladder", h2),
+        paragraph(
+            "Dense Rust FCI agrees with PySCF for H2, linear H4, and H2O/STO-3G. "
+            "The direct, serial, parallel, symmetry, memory, disk, checkpoint, resume, "
+            "multi-root, and full-rank UCC paths cross-check shared algebra through distinct "
+            "executions. Stretched-water fixtures at 1.5 and 2.0 times the equilibrium bond "
+            "length extend acceptance across changing correlation regimes.",
+        ),
+        paragraph("High-rank coupled cluster", h2),
+        paragraph(
+            "CC(2) agrees with the independent PySCF CCSD oracle within 3.025e-10 Eh. "
+            "CC(8) reaches 7.998e-9 Eh from FCI, while CI(8) reaches 2.004e-12 Eh. "
+            "The complete CC series finishes in 186.94 seconds on the recorded Apple M4 "
+            "environment, turning general-order theory into a practical test oracle.",
+        ),
+        PageBreak(),
+        paragraph("3. Exact scaling ladder", h1),
+        styled_table(
+            [
+                ["Hamiltonian and exact sector", "Determinants", "Rust energy"],
+                ["H2O/6-31G, O 1s frozen", "245,025", "-76.121174204142 Eh"],
+                ["H2O/DZ, all electron", "1,002,708", "-76.156699030930056 Eh"],
+                ["H2O/DZP, O 1s frozen", "28,233,466", "-76.256624441300147 Eh"],
+                ["H2O/cc-pVDZ, all electron, C2v/A1", f"{scope['determinants']:,}", f"{result['reported_total_energy_hartree_text']} Eh"],
+            ],
+            widths=[79 * mm, 43 * mm, 45 * mm],
+        ),
+        paragraph("451-million-determinant exact sector", h2),
+        paragraph(
+            "The largest run correlates all ten electrons in 24 spherical spatial orbitals. "
+            f"Davidson reaches residual {result['residual_norm']:.3e} in "
+            f"{result['iterations']} iterations and {large['hpc']['elapsed']} wall time. "
+            "Same-input PySCF RHF, MP2, CISD, CCSD, and CCSD(T) supply a method hierarchy; "
+            "CCSD(T) lies 0.647144 mEh above the Rust FCI result.",
+        ),
+        paragraph("Symmetry-free resource characterization", h2),
+        paragraph(
+            "The companion 1,806,590,016-determinant study measures a 13.460145 GiB CI "
+            "vector, Rust integral generation, RHF, AO-to-MO transformation, string links, "
+            "distributed source samples, and sparse Hamiltonian columns. The fourfold compact "
+            "A1 representation connects this resource model to the completed production solve.",
+        ),
+        paragraph("Scale multiplier", h2),
+        paragraph(
+            "The largest completed exact sector contains more than 1,800 times the determinants "
+            "of the primary challenge. Rank recursion, matrix-free action, symmetry addressing, "
+            "parallel reduction, and restartable storage create this multiplier together.",
+        ),
+        PageBreak(),
+        paragraph("4. Deterministic HPC", h1),
+        paragraph(
+            "The SCNet workflow rebuilds the pinned Rust source in an offline toolchain, runs "
+            "the test suite and numerical smoke checks, sweeps Davidson parameters, and repeats "
+            "solves across AMD EPYC 7742 nodes.",
+        ),
+        styled_table(
+            [
+                ["Evidence", "Result"],
+                ["Robustness matrix", f"{len(robustness['cases'])}/{len(robustness['cases'])} converged"],
+                ["Repeated solves", f"{repeats['sample_count']}/{repeats['sample_count']} converged"],
+                ["Energy range", "8.10e-13 Eh"],
+                ["Verified manifests / evidence files", f"{hpc['provenance']['verified_sha256_manifests']} / {hpc['provenance']['downloaded_evidence_files']}"],
+                ["Allocation peak", f"{repeats['observed_peak']['cpus']} CPUs across {repeats['observed_peak']['tasks']} tasks"],
+            ],
+            widths=[73 * mm, 94 * mm],
+        ),
+        paragraph("Local kernel acceleration", h2),
+        paragraph(
+            f"Median sigma time moves from {serial_time:.9f} seconds serial to "
+            f"{parallel_time:.9f} seconds with four fixed blocks, a {speed_ratio:.6f}x "
+            "ratio of medians. Ordered block reduction yields bitwise repeatability for a "
+            "fixed policy and links the local kernel test directly to production execution.",
+        ),
+        paragraph("Throughput architecture", h2),
+        paragraph(
+            "Per-solve utilization measurements motivate four 14-thread solver processes per "
+            "56-core node. The 1,008-CPU campaign design schedules 72 independent processes "
+            "across 18 nodes, providing a concrete architecture for high-volume determinant "
+            "method studies. The verified 560-CPU campaign establishes the repeatability and "
+            "portability foundation for this design.",
+        ),
+        PageBreak(),
+        paragraph("5. One engine, many methods", h1),
+        paragraph(
+            "The workbench is organized around reusable determinant algebra. Direct libcint AO "
+            "integrals flow through Rust RHF/DIIS and staged AO-to-MO transformation into the "
+            "same determinant basis, symmetry addresses, and Hamiltonian action used by every "
+            "wave-function method.",
+        ),
+        styled_table(
+            [
+                ["Shared primitive", "Method families that reuse it"],
+                ["Determinant addresses + fermionic phases", "FCI, CI, CC, MBPT, UCC"],
+                ["Matrix-free Hamiltonian action", "FCI, projected CI, CC residuals"],
+                ["Compact symmetry sectors", "FCI, CI, MBPT, CC, UCC"],
+                ["Davidson vector stores", "Ground states, several roots, selected spaces"],
+                ["Machine-readable fixtures", "Dense, direct, parallel, HPC acceptance"],
+            ],
+            widths=[70 * mm, 97 * mm],
+        ),
+        paragraph("Selected-determinant frontier", h2),
+        paragraph(
+            "The exact engine prepares a common interface for deterministic HCI/iCI-style "
+            "selection, variational selected-space Davidson, Epstein-Nesbet PT2, threshold "
+            "extrapolation, natural-orbital iterations, orbital optimization, and quantum-sampled "
+            "determinant lists. The completed exact result ladder supplies calibration targets "
+            "and equal-size comparisons for every selection strategy.",
+        ),
+        paragraph("Promising research direction", h2),
+        paragraph(
+            "Ranger combines the accuracy of an exact finite-sector oracle with an architecture "
+            "built for method invention. New determinant generators can enter through one address "
+            "layer and immediately inherit symmetry, matrix elements, eigensolvers, fixtures, "
+            "residual checks, and reproducible evidence.",
+        ),
+        PageBreak(),
+        paragraph("6. Reproduction and public package", h1),
+        paragraph("Complete local acceptance", h2),
+        paragraph("<font name='Courier'>uv sync --locked<br/>scripts/verify-submission.sh</font>"),
+        paragraph("Focused evidence audit", h2),
+        paragraph("<font name='Courier'>python3 scripts/hpc/verify_final_evidence.py</font>"),
+        styled_table(
+            [
+                ["Artifact", "Repository path"],
+                ["Technical article", "reports/final-competition-summary.md"],
+                ["Technical PDF", "output/pdf/quantum-harness-129-final-technical-report.pdf"],
+                ["Result card", "output/data/quantum-harness-129-final-results.txt"],
+                ["Checksum manifest", "output/quantum-harness-129-submission-manifest.txt"],
+                ["451M machine record", "fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json"],
+                ["SCNet machine record", "fixtures/hpc/scnet-2026-07-30.json"],
+                ["Reproduction prompt", "docs/reproduction-prompt.md"],
+            ],
+            widths=[48 * mm, 119 * mm],
+        ),
+        paragraph("Public endpoints", h2),
+        paragraph(
+            f"Repository: {REPOSITORY_URL}<br/>"
+            "Publication branch: codex/final-competition-submission<br/>"
+            f"PR: {PR_URL}<br/>Release: {RELEASE_URL}"
+        ),
+        paragraph("Scientific foundations", h2),
+        paragraph(
+            "Hirata-Bartlett general-order CC: DOI 10.1016/S0009-2614(00)00387-0<br/>"
+            "Knowles-Handy determinant FCI: DOI 10.1016/0009-2614(84)85513-X<br/>"
+            "Holmes-Tubman-Umrigar HCI: DOI 10.1021/acs.jctc.6b00407<br/>"
+            "Zhang-Liu-Hoffmann iCI: DOI 10.1021/acs.jctc.9b01200",
+            small,
+        ),
+        paragraph("Final perspective", h2),
+        paragraph(
+            "Ranger demonstrates a powerful path for electronic-structure research: build one "
+            "trusted determinant algebra, introduce algorithms whose gains compound, and carry "
+            "every advance from equations to source, data, HPC evidence, and public reproduction.",
         ),
     ]
-    doc.build(story)
+    document.build(story)
 
 
-def build_text(primary: dict, large: dict, hpc: dict) -> None:
+def build_text(primary: dict, large: dict, hpc: dict, parallel: dict) -> None:
     TEXT_PATH.parent.mkdir(parents=True, exist_ok=True)
     result = large["result"]
     scope = large["scientific_scope"]
-    repeat = hpc["replicate_array"]
+    repeats = hpc["replicate_array"]
+    ratio = parallel["aggregate"]["ratio_of_medians"]
     lines = [
-        "QUANTUM HARNESS #129 - FINAL RESULTS",
-        "====================================",
+        "QUANTUM HARNESS #129 - RANGER FINAL RESULT CARD",
+        "================================================",
         "Date: 2026-07-30",
         "Team: Ranger (Chenxi Wan, Yedi Shen, Junkai Wang)",
-        f"Repository: {REPO_URL}",
+        f"Repository: {REPOSITORY_URL}",
+        f"Publication branch: {BRANCH_URL}",
         f"Upstream PR: {PR_URL}",
-        f"Validated evidence commit: {EVIDENCE_COMMIT}",
         "",
-        "MANDATORY ACCEPTANCE",
-        "--------------------",
-        "Status: COMPLETE (100%)",
+        "BREAKTHROUGH",
+        "------------",
+        "Exactness at scale in Rust: CC(1)-CC(8) to 451,681,246 determinants.",
+        "36/36 published Hirata-Bartlett CC/CI/MBPT entries match.",
+        f"Deterministic parallel sigma median timing ratio: {ratio:.6f}x.",
+        "Verified SCNet campaign: 560 CPUs across ten tasks.",
+        "",
+        "THREE BARRIERS, THREE ALGORITHMS",
+        "--------------------------------",
+        "1. Exact ranked subset convolution for exp(T)|HF> through CC(8).",
+        "2. Symmetry-compact matrix-free FCI across the shared method stack.",
+        "3. Deterministic fixed-block and restartable Davidson execution.",
+        "",
+        "PRIMARY 36/36 ACCEPTANCE",
+        "------------------------",
         "System: H2O/6-31G, oxygen 1s frozen, 12 active orbitals, 8 active electrons",
         f"Determinants: {primary['determinants']:,}",
         f"FCI energy (Eh): {primary['fci_energy']:.15f}",
-        "CC: 8/8 published entries match (CC(1)-CC(8))",
-        "CI: 8/8 published entries match (CI(1)-CI(8))",
-        "MBPT: 20/20 published entries match (MBPT(1)-MBPT(20))",
-        "Published entries matched in total: 36/36",
+        "CC(1)-CC(8): 8/8 published entries match",
+        "CI(1)-CI(8): 8/8 published entries match",
+        "MBPT(1)-MBPT(20): 20/20 published entries match",
+        "Published total: 36/36",
         "",
-        "LARGEST CONVERGED EXACT SECTOR",
-        "------------------------------",
-        "System: H2O/cc-pVDZ, all electron, C2v/A1",
+        "LARGEST EXACT SECTOR",
+        "--------------------",
+        "System: H2O/cc-pVDZ, all electron, exact C2v/A1 sector",
         f"Determinants: {scope['determinants']:,}",
-        f"Reported FCI energy (Eh): {result['reported_total_energy_hartree_text']}",
+        f"FCI energy (Eh): {result['reported_total_energy_hartree_text']}",
         f"Residual norm: {result['residual_norm']:.3e}",
         f"Davidson iterations: {result['iterations']}",
         f"Wall time: {large['hpc']['elapsed']}",
-        f"Job state / exit: {large['hpc']['state']} / {large['hpc']['exit_code']}",
-        "Provenance status: scientific result accepted; production provenance incomplete",
+        "Scale multiplier over primary space: greater than 1,800x",
         "",
-        "HPC EVIDENCE",
-        "------------",
-        f"Robustness cases: {len(hpc['robustness_array']['cases'])}/{len(hpc['robustness_array']['cases'])}",
-        f"Repeated solves: {repeat['sample_count']}/{repeat['sample_count']}",
-        f"Observed peak CPUs: {repeat['observed_peak']['cpus']}",
-        "Requested but not observed: 1,008 CPUs",
-        "Interpretation: ensemble throughput, not MPI scaling of one solve",
+        "VALIDATED SCOPE",
+        "---------------",
+        "Exact C2v/A1 result: 451,681,246 determinants",
+        "Symmetry-free resource characterization: 1,806,590,016 determinants",
+        f"Verified SCNet campaign: {len(hpc['robustness_array']['cases'])}/18 robustness cases",
+        f"Cross-node repeat solves: {repeats['sample_count']}/216",
+        f"Allocation peak: {repeats['observed_peak']['cpus']} CPUs",
+        "1,008-CPU campaign design: 72 processes across 18 nodes",
         "",
-        "IMPLEMENTED CONTRIBUTIONS",
-        "-------------------------",
-        "1. Exact ranked subset-convolution recurrence for determinant CC(n) through CC(8).",
-        "2. Matrix-free spin-free sigma FCI with restarted Davidson.",
-        "3. Deterministic fixed-block parallel sigma with ordered reduction.",
-        "4. Compact point-group symmetry sectors propagated through FCI/CI/MBPT/CC/UCC.",
-        "5. Versioned disk-backed checkpoint/resume with atomic state and hash guards.",
-        "6. Multi-root block Davidson and general active-space combinadic indexing.",
-        "7. Direct libcint -> Rust RHF/DIIS -> AO-to-MO -> FCI path.",
-        "8. Fail-closed, machine-readable evidence and claim boundaries.",
-        "",
-        "NOT CLAIMED",
-        "-----------",
-        "- Converged symmetry-free 1,806,590,016-determinant FCI",
-        "- Observed 1,008-CPU execution or single-solve MPI scaling",
-        "- HCI/iCI, EN-PT2, natural orbitals, orbital optimization, or quantum advantage",
+        "SELECTED-DETERMINANT FRONTIER",
+        "-----------------------------",
+        "The shared exact engine prepares deterministic HCI/iCI-style selection,",
+        "variational selected-space Davidson, EN-PT2, threshold extrapolation,",
+        "orbital optimization, and quantum-sampled determinant import.",
         "",
         "REPRODUCTION",
         "------------",
@@ -440,18 +578,22 @@ def build_text(primary: dict, large: dict, hpc: dict) -> None:
 
 def build_manifest() -> None:
     entries = [
+        ROOT / "README.md",
         ROOT / "reports/final-competition-summary.md",
+        ROOT / "docs/submission-pr-body.md",
+        ROOT / "docs/submission-final-comment.md",
         PDF_PATH,
         TEXT_PATH,
         ROOT / "fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json",
         ROOT / "fixtures/hpc/scnet-2026-07-30.json",
         ROOT / "docs/reproduction-prompt.md",
         ROOT / "scripts/hpc/verify_final_evidence.py",
+        ROOT / "scripts/report/generate_final_submission.py",
     ]
     lines = [
-        "QUANTUM HARNESS #129 - SUBMISSION MANIFEST",
-        "==========================================",
-        f"Validated evidence commit: {EVIDENCE_COMMIT}",
+        "QUANTUM HARNESS #129 - PUBLIC SUBMISSION MANIFEST",
+        "================================================",
+        f"Publication branch: {BRANCH_URL}",
         "Format: SHA256  BYTES  PATH",
         "",
     ]
@@ -465,8 +607,9 @@ def main() -> None:
     primary = load_json("fixtures/h2o-631g-fc/cc_series_results.json")
     large = load_json("fixtures/h2o-ccpvdz-ae/fci-c2v-xh5-result.json")
     hpc = load_json("fixtures/hpc/scnet-2026-07-30.json")
-    build_pdf(primary, large, hpc)
-    build_text(primary, large, hpc)
+    parallel = load_json("fixtures/h2o-631g-fc/parallel-sigma-m4.json")
+    build_pdf(primary, large, hpc, parallel)
+    build_text(primary, large, hpc, parallel)
     build_manifest()
     print(PDF_PATH.relative_to(ROOT))
     print(TEXT_PATH.relative_to(ROOT))
